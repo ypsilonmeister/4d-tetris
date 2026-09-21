@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4D Tetris Slicer</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel2: #1e2230;
+    --line: #2c3142;
+    --text: #e6e8ef;
+    --muted: #8a90a3;
+    --plain: #3a4157;
+    --plain-h: #4a5270;
+    --w: #c2410c;
+    --w-h: #ea580c;
+    --accent: #facc15;
+    --ok: #22c55e;
+    --ng: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; font-size: 13px; }
+  #app { display: flex; height: 100%; }
+  #view { position: relative; flex: 1; min-width: 0; }
+  #view canvas { display: block; }
+  #hud { position: absolute; left: 12px; top: 10px; pointer-events: none; line-height: 1.5; }
+  #hud .big { font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+  #hud .phase { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 4px; background: var(--panel2); color: var(--muted); }
+  #hud .phase.pred { background: var(--accent); color: #1a1a1a; font-weight: 700; }
+  #hud .phase.res { background: #334; color: #fff; font-weight: 700; }
+  #msg { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: rgba(20,22,30,.92);
+    border: 1px solid var(--line); padding: 8px 14px; border-radius: 6px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 80%; }
+  #msg.show { opacity: 1; }
+  #legend { position: absolute; right: 12px; bottom: 12px; background: rgba(20,22,30,.85); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 10px; line-height: 1.7; pointer-events: none; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+
+  #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px 24px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+  button { font: inherit; color: var(--text); background: var(--plain); border: 1px solid transparent; border-radius: 5px;
+    padding: 6px 8px; cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--plain-h); }
+  button:disabled { opacity: .35; cursor: default; }
+  button.w { background: var(--w); font-weight: 700; }
+  button.w:hover:not(:disabled) { background: var(--w-h); }
+  button.primary { background: var(--accent); color: #1a1a1a; font-weight: 700; }
+  button.primary:hover:not(:disabled) { background: #fde047; }
+  button.ghost { background: transparent; border-color: var(--line); }
+  .rot { display: grid; grid-template-columns: 38px 1fr 1fr; gap: 5px; align-items: center; }
+  .rot .lab { color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+  .rot .lab.w { color: #fb923c; font-weight: 700; }
+  .rot .sep { grid-column: 1 / -1; height: 1px; background: var(--line); margin: 3px 0; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 6px; }
+  .move { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .move button { font-family: ui-monospace, Consolas, monospace; padding: 5px 0; }
+  input[type=range] { width: 100%; accent-color: #fb923c; }
+  label.chk { display: flex; gap: 6px; align-items: center; cursor: pointer; color: var(--text); }
+  label.chk + label.chk { margin-top: 4px; }
+  select, input[type=number] { font: inherit; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 4px 6px; }
+  input[type=number] { width: 54px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, Consolas, monospace; }
+
+  #wstrip { display: flex; gap: 3px; margin-top: 6px; }
+  #wstrip .wc { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
+    text-align: center; padding: 3px 0 2px; position: relative; }
+  #wstrip .wc.cur { border-color: #fb923c; box-shadow: 0 0 0 1px #fb923c inset; }
+  #wstrip .wc .n { font-size: 10px; color: var(--muted); }
+  #wstrip .wc .bar { height: 18px; display: flex; flex-direction: column-reverse; gap: 1px; padding: 0 5px; margin-top: 2px; }
+  #wstrip .wc .bar i { display: block; height: 3px; border-radius: 1px; }
+
+  #predbox { border: 1px solid var(--accent); border-radius: 6px; padding: 10px; background: rgba(250,204,21,.05); }
+  #predbox.res { border-color: #556; background: transparent; }
+  #editor { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .layer .lt { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-family: ui-monospace, Consolas, monospace; }
+  .layer .g { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .layer .g div { aspect-ratio: 1; background: var(--panel2); cursor: pointer; position: relative; }
+  .layer .g div:hover { outline: 1px solid #fff; z-index: 1; }
+  .layer .g div.prev::after { content: ""; position: absolute; inset: 28%; border: 1px dashed #9aa3c0; border-radius: 1px; }
+  .layer .g div.on { background: var(--accent); }
+  .layer .g div.match { background: #60a5fa; }
+  .layer .g div.fp { background: var(--ng); }
+  .layer .g div.fn { background: var(--ok); }
+  #score { margin-top: 8px; line-height: 1.7; }
+  #log { font-family: ui-monospace, Consolas, monospace; font-size: 11px; line-height: 1.6; max-height: 160px; overflow-y: auto; }
+  #log .ok { color: var(--ok); }
+  #log .ng { color: #f87171; }
+  kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+  .keys { line-height: 1.9; color: var(--muted); }
+
+  @media (max-width: 800px) {
+    #app { flex-direction: column; }
+    #view { height: 55vh; flex: none; }
+    #panel { width: 100%; border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="view">
+    <div id="hud">
+      <div class="big">w = <span id="hudW">0</span></div>
+      <div class="muted" id="hudPiece"></div>
+      <div class="phase" id="hudPhase">通常モード</div>
+    </div>
+    <div id="legend"></div>
+    <div id="msg"></div>
+  </div>
+
+  <div id="panel">
+    <h2>回転(90°)</h2>
+    <div class="rot" id="rotButtons"></div>
+
+    <h2>w スライス</h2>
+    <div class="row"><input type="range" id="slice" min="0" max="5" step="1" value="0"></div>
+    <div id="wstrip"></div>
+    <div class="row muted" style="margin-top:4px;font-size:11px">バー: <span class="sw" style="background:#fb923c;width:8px;height:8px"></span>操作中ピース / <span class="sw" style="background:#667;width:8px;height:8px"></span>固定済みセル</div>
+
+    <h2>予測モード</h2>
+    <label class="chk"><input type="checkbox" id="predToggle"> 予測モード(回転前に断面を予測)</label>
+    <label class="chk"><input type="checkbox" id="showPrev" checked> 予測中に回転前の断面を点線で表示</label>
+    <div id="predbox" style="display:none; margin-top:8px">
+      <div id="predTitle"></div>
+      <div id="editor"></div>
+      <div id="score"></div>
+      <div class="row" style="margin-top:8px" id="predActions"></div>
+    </div>
+
+    <h2>平行移動</h2>
+    <div class="move" id="moveButtons"></div>
+
+    <h2>ピース</h2>
+    <div class="row">
+      <select id="pieceSel"></select>
+      <button id="btnSpawn">出す</button>
+      <button id="btnLock">固定</button>
+    </div>
+    <label class="chk" style="margin-top:6px"><input type="checkbox" id="allow4D"> 真の4Dピース(w方向に厚み)も選択肢に含める</label>
+    <label class="chk"><input type="checkbox" id="showGhost"> 隣接スライス (w±1) のピースを薄く表示</label>
+
+    <h2>グリッド</h2>
+    <div class="row">
+      x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="6">
+      w <input type="number" id="sizeW" min="2" max="12" value="6">
+      <button id="btnReset" class="ghost">リセット</button>
+    </div>
+
+    <h2>予測ログ</h2>
+    <div id="log"><span class="muted">まだ試行なし</span></div>
+
+    <h2>キー操作</h2>
+    <div class="keys">
+      <kbd>↑</kbd><kbd>↓</kbd> スライス w ±1<br>
+      <kbd>1</kbd>–<kbd>6</kbd> 回転 xy xz yz <b style="color:#fb923c">xw yw zw</b>(<kbd>Shift</kbd>で逆回転)<br>
+      <kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>
+      <kbd>P</kbd> 予測モード切替  <kbd>Enter</kbd> 実行/次へ  <kbd>Esc</kbd> キャンセル<br>
+      <kbd>Space</kbd> 固定  <kbd>N</kbd> 次のピース<br>
+      ドラッグで視点回転、ホイールでズーム
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// =====================================================================
+// 4D ロジック(素のJS。Three.js には依存しない)
+// =====================================================================
+
+const AXES = ['x', 'y', 'z', 'w'];
+const PLANES = [
+  { id: 'xy', a: 0, b: 1, w: false },
+  { id: 'xz', a: 0, b: 2, w: false },
+  { id: 'yz', a: 1, b: 2, w: false },
+  { id: 'xw', a: 0, b: 3, w: true },
+  { id: 'yw', a: 1, b: 3, w: true },
+  { id: 'zw', a: 2, b: 3, w: true },
+];
+
+// 平面 (a,b) 内の90°回転行列。他の2軸は不変。
+// sign=+1: a→b 方向(a軸単位ベクトルがb軸単位ベクトルへ移る)
+function rotationMatrix(a, b, sign) {
+  const m = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+  const c = 0, s = sign; // cos90=0, sin90=±1
+  m[a][a] = c;  m[a][b] = -s;
+  m[b][a] = s;  m[b][b] = c;
+  return m;
+}
+function applyMatrix(m, v) {
+  const r = [0,0,0,0];
+  for (let i = 0; i < 4; i++) r[i] = m[i][0]*v[0] + m[i][1]*v[1] + m[i][2]*v[2] + m[i][3]*v[3];
+  return r;
+}
+const key4 = c => c.join(',');
+const key3 = c => c[0] + ',' + c[1] + ',' + c[2];
+
+// ピース定義: 相対座標 [x,y,z,w] の配列(原点=回転中心のアンカーセル)
+const PIECES = [
+  { name: 'I',        color: 0x22d3ee, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[2,0,0,0]] },
+  { name: 'O',        color: 0xfacc15, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[1,1,0,0]] },
+  { name: 'T',        color: 0xa855f7, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[0,1,0,0]] },
+  { name: 'L',        color: 0xf97316, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[1,1,0,0]] },
+  { name: 'S',        color: 0x22c55e, cells: [[-1,0,0,0],[0,0,0,0],[0,1,0,0],[1,1,0,0]] },
+  { name: '三脚',     color: 0xec4899, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,1,0]] },
+  { name: 'ねじれA',  color: 0x3b82f6, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
+  { name: 'ねじれB',  color: 0x14b8a6, cells: [[-1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
+  // --- 真の4Dピース(w方向にも連結) ---
+  { name: '4D: xw正方形',   color: 0xf43f5e, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,0,0,1],[1,0,0,1]] },
+  { name: '4D: wL',         color: 0xe11d48, is4D: true, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[1,0,0,1]] },
+  { name: '4D: 四脚の3本',  color: 0xd946ef, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]] },
+  { name: '4D: wねじれ',    color: 0x8b5cf6, is4D: true, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,0,1]] },
+  { name: '4D: 2x2x1x2',    color: 0xfb7185, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[1,1,0,0],[0,0,0,1],[1,0,0,1],[0,1,0,1],[1,1,0,1]] },
+];
+
+const S = {
+  N: 6,            // x,y,z のサイズ
+  NW: 6,           // w のサイズ
+  slice: 2,
+  placed: new Map(),   // key4 -> color
+  piece: null,         // { def, rel: [[x,y,z,w]...], pos: [x,y,z,w] }
+  predictMode: false,
+  phase: 'idle',       // 'idle' | 'predicting' | 'result'
+  pending: null,       // { plane, sign }
+  pred: new Set(),     // key3 (現在スライス上の予測セル)
+  prevSlice: new Set(),// 回転前の断面 key3
+  diff: null,          // { match:Set, fp:Set, fn:Set, kick }
+  showPrev: true,
+  showGhost: false,
+  allow4D: false,
+  pieceIdx: 0,
+  log: [],
+};
+
+const sizeOf = axis => axis === 3 ? S.NW : S.N;
+const inBounds = c => c.every((v, i) => v >= 0 && v < sizeOf(i));
+const absCells = (p = S.piece) => p ? p.rel.map(r => r.map((v, i) => v + p.pos[i])) : [];
+const fits = p => absCells(p).every(c => inBounds(c) && !S.placed.has(key4(c)));
+
+// 範囲外にはみ出した分だけ押し戻す(壁キック)。成功すれば {pos, kick} を返す。
+function kickIntoBounds(rel, pos) {
+  const np = pos.slice(), kick = [0,0,0,0];
+  for (let i = 0; i < 4; i++) {
+    const vals = rel.map(r => r[i] + np[i]);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    if (hi - lo + 1 > sizeOf(i)) return null;
+    if (lo < 0) { kick[i] = -lo; }
+    else if (hi >= sizeOf(i)) { kick[i] = sizeOf(i) - 1 - hi; }
+    np[i] += kick[i];
+  }
+  return { pos: np, kick };
+}
+
+// ピースを回転させた結果を返す(状態は変えない)
+function computeRotation(piece, planeId, sign) {
+  const pl = PLANES.find(p => p.id === planeId);
+  const m = rotationMatrix(pl.a, pl.b, sign);
+  const rel = piece.rel.map(r => applyMatrix(m, r));
+  const k = kickIntoBounds(rel, piece.pos);
+  if (!k) return { ok: false, reason: 'グリッドに収まりません' };
+  const np = { def: piece.def, rel, pos: k.pos };
+  if (!fits(np)) return { ok: false, reason: '固定済みセルと衝突します' };
+  return { ok: true, piece: np, kick: k.kick };
+}
+
+function sliceOfPiece(piece, w) {
+  const s = new Set();
+  for (const c of absCells(piece)) if (c[3] === w) s.add(key3(c));
+  return s;
+}
+
+function spawn(idx) {
+  const def = PIECES[idx];
+  const mid = Math.floor((S.N - 1) / 2);
+  const rel = def.cells.map(c => c.slice());
+  if (!kickIntoBounds(rel, [mid, mid, mid, S.slice])) { flash('このピースはグリッドに収まりません'); return false; }
+  // 中央・現在スライスに近い空き位置を探す(w のズレを最も重く見る)
+  const cost = q => Math.abs(q[3] - S.slice) * 100 + Math.abs(q[0] - mid) + Math.abs(q[1] - mid) + Math.abs(q[2] - mid);
+  let best = null;
+  for (let x = 0; x < S.N; x++) for (let y = 0; y < S.N; y++) for (let z = 0; z < S.N; z++) for (let w = 0; w < S.NW; w++) {
+    const q = [x, y, z, w];
+    if (best && cost(q) >= cost(best.pos)) continue;
+    const p = { def, rel, pos: q };
+    if (fits(p)) best = p;
+  }
+  if (!best) { flash('空き位置がありません(リセットしてください)'); return false; }
+  S.piece = best;
+  S.pieceIdx = idx;
+  return true;
+}
+
+// =====================================================================
+// Three.js 描画
+// =====================================================================
+
+const view = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x0f1117);
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(5, 10, 7); scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xffffff, 0.35); dl2.position.set(-6, -3, -5); scene.add(dl2);
+
+const frameGroup = new THREE.Group(); scene.add(frameGroup);
+const voxGroup = new THREE.Group(); scene.add(voxGroup);
+const hoverBox = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)),
+  new THREE.LineBasicMaterial({ color: 0xffffff }));
+hoverBox.visible = false; scene.add(hoverBox);
+
+const boxGeo = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+const smallGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+const smallEdge = new THREE.EdgesGeometry(smallGeo);
+const matCache = new Map();
+function solidMat(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  if (!matCache.has(k)) matCache.set(k, new THREE.MeshStandardMaterial({
+    color, roughness: 0.55, metalness: 0.05, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }));
+  return matCache.get(k);
+}
+function lineMat(color, opacity = 1) {
+  const k = 'L' + color + ':' + opacity;
+  if (!matCache.has(k)) matCache.set(k, new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity }));
+  return matCache.get(k);
+}
+const dashMat = new THREE.LineDashedMaterial({ color: 0xaab3d0, dashSize: 0.08, gapSize: 0.06 });
+
+// 3D の配置: 4D (x,y,z) をそのまま Three の (x,y,z) に。y が上。
+const toV = (x, y, z) => new THREE.Vector3(x, y, z);
+
+function addVoxel(x, y, z, color, { opacity = 1, edge = 0x000000, edgeOpacity = 0.6, solid = true, small = false } = {}) {
+  if (solid) {
+    const m = new THREE.Mesh(small ? smallGeo : boxGeo, solidMat(color, opacity));
+    m.position.copy(toV(x, y, z)); voxGroup.add(m);
+  }
+  if (edge !== null) {
+    const l = new THREE.LineSegments(small ? smallEdge : edgeGeo, lineMat(edge, edgeOpacity));
+    l.position.copy(toV(x, y, z)); voxGroup.add(l);
+  }
+}
+function addDashed(x, y, z) {
+  const l = new THREE.LineSegments(edgeGeo, dashMat);
+  l.computeLineDistances(); l.position.copy(toV(x, y, z)); voxGroup.add(l);
+}
+
+function makeLabel(text, color) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+  const g = c.getContext('2d');
+  g.font = 'bold 44px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = color; g.fillText(text, 64, 34);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  sp.scale.set(0.9, 0.45, 1);
+  return sp;
+}
+
+function buildFrame() {
+  frameGroup.clear();
+  const N = S.N, h = N / 2 - 0.5;
+  const box = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(N, N, N)),
+    new THREE.LineBasicMaterial({ color: 0x4b5570 }));
+  box.position.set(h, h, h); frameGroup.add(box);
+
+  // 床と奥の壁のグリッド線
+  const pts = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i - 0.5;
+    pts.push(t, -0.5, -0.5,  t, -0.5, N - 0.5);   // 床 x方向
+    pts.push(-0.5, -0.5, t,  N - 0.5, -0.5, t);   // 床 z方向
+  }
+  const gg = new THREE.BufferGeometry();
+  gg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  frameGroup.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: 0x2a3042 })));
+
+  // 軸
+  const o = toV(-0.5, -0.5, -0.5), L = N + 0.6;
+  const axes = [[1,0,0,'#f87171','x'], [0,1,0,'#4ade80','y'], [0,0,1,'#60a5fa','z']];
+  for (const [dx, dy, dz, col, name] of axes) {
+    const dir = new THREE.Vector3(dx, dy, dz);
+    frameGroup.add(new THREE.ArrowHelper(dir, o, L, new THREE.Color(col), 0.3, 0.16));
+    const lab = makeLabel(name, col);
+    lab.position.copy(o.clone().add(dir.clone().multiplyScalar(L + 0.4)));
+    frameGroup.add(lab);
+  }
+
+  controls.target.set(h, h, h);
+  camera.position.set(h + N * 1.35, h + N * 1.05, h + N * 1.75);
+  controls.update();
+}
+
+// =====================================================================
+// 描画(状態 → ボクセル)
+// =====================================================================
+
+const PLACED_COL = 0x6b7280;
+const C_MATCH = 0x60a5fa, C_FP = 0xef4444, C_FN = 0x22c55e, C_PRED = 0xfacc15;
+
+function renderVoxels() {
+  voxGroup.clear();
+  const w = S.slice;
+
+  // 固定済みセル(回転の影響を受けない)
+  for (const [k, col] of S.placed) {
+    const c = k.split(',').map(Number);
+    if (c[3] !== w) continue;
+    addVoxel(c[0], c[1], c[2], PLACED_COL, { opacity: S.phase === 'idle' ? 0.85 : 0.35, edge: 0x111111, edgeOpacity: 0.4 });
+  }
+
+  if (S.phase === 'idle') {
+    if (S.piece) {
+      const col = S.piece.def.color;
+      for (const c of absCells()) {
+        if (c[3] === w) addVoxel(c[0], c[1], c[2], col, { edge: 0xffffff, edgeOpacity: 0.55 });
+        else if (S.showGhost && Math.abs(c[3] - w) === 1) {
+          // w-1 は青寄り、w+1 は赤寄りの小さなワイヤー
+          addVoxel(c[0], c[1], c[2], c[3] < w ? 0x60a5fa : 0xf87171,
+            { solid: true, opacity: 0.18, small: true, edge: c[3] < w ? 0x60a5fa : 0xf87171, edgeOpacity: 0.7 });
+        }
+      }
+    }
+  } else if (S.phase === 'predicting') {
+    if (S.showPrev) for (const k of S.prevSlice) { const [x,y,z] = k.split(',').map(Number); addDashed(x, y, z); }
+    for (const k of S.pred) { const [x,y,z] = k.split(',').map(Number); addVoxel(x, y, z, C_PRED, { opacity: 0.8, edge: 0xffffff, edgeOpacity: 0.7 }); }
+  } else if (S.phase === 'result') {
+    const d = S.diff;
+    for (const k of d.match) { const [x,y,z] = k.split(',').map(Number); addVoxel(x, y, z, C_MATCH, { edge: 0xffffff, edgeOpacity: 0.7 }); }
+    for (const k of d.fn)    { const [x,y,z] = k.split(',').map(Number); addVoxel(x, y, z, C_FN, { edge: 0xffffff, edgeOpacity: 0.7 }); }
+    for (const k of d.fp)    { const [x,y,z] = k.split(',').map(Number); addVoxel(x, y, z, C_FP, { opacity: 0.35, edge: C_FP, edgeOpacity: 1 }); }
+  }
+}
+
+// =====================================================================
+// UI
+// =====================================================================
+
+const $ = id => document.getElementById(id);
+let msgTimer = 0;
+function flash(text) {
+  const m = $('msg'); m.textContent = text; m.classList.add('show');
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => m.classList.remove('show'), 2600);
+}
+
+function buildRotButtons() {
+  const box = $('rotButtons'); box.innerHTML = '';
+  PLANES.forEach((pl, i) => {
+    if (i === 3) { const s = document.createElement('div'); s.className = 'sep'; box.appendChild(s); }
+    const lab = document.createElement('div');
+    lab.className = 'lab' + (pl.w ? ' w' : ''); lab.textContent = pl.id; box.appendChild(lab);
+    for (const sign of [1, -1]) {
+      const b = document.createElement('button');
+      b.textContent = pl.id + (sign > 0 ? ' +' : ' −');
+      if (pl.w) b.className = 'w';
+      b.title = `${pl.id} 平面で ${sign > 0 ? '+' : '−'}90° 回転(${AXES[pl.a]}→${sign > 0 ? '' : '−'}${AXES[pl.b]})  キー: ${i + 1}${sign < 0 ? ' + Shift' : ''}`;
+      b.dataset.rot = pl.id + ':' + sign;
+      b.onclick = () => requestRotate(pl.id, sign);
+      box.appendChild(b);
+    }
+  });
+}
+
+function buildMoveButtons() {
+  const box = $('moveButtons'); box.innerHTML = '';
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
+    const b = document.createElement('button');
+    b.textContent = AXES[i] + (s > 0 ? '+' : '−');
+    if (i === 3) b.className = 'w';
+    b.onclick = () => move(i, s);
+    box.appendChild(b);
+  }
+}
+
+function buildPieceSelect() {
+  const sel = $('pieceSel'); sel.innerHTML = '';
+  PIECES.forEach((p, i) => {
+    if (p.is4D && !S.allow4D) return;
+    const o = document.createElement('option'); o.value = i; o.textContent = p.name; sel.appendChild(o);
+  });
+  if (S.piece) sel.value = PIECES.indexOf(S.piece.def);
+}
+
+function updateWStrip() {
+  const box = $('wstrip'); box.innerHTML = '';
+  const pc = new Array(S.NW).fill(0), fc = new Array(S.NW).fill(0);
+  for (const c of absCells()) pc[c[3]]++;
+  for (const k of S.placed.keys()) fc[+k.split(',')[3]]++;
+  for (let w = 0; w < S.NW; w++) {
+    const d = document.createElement('div');
+    d.className = 'wc' + (w === S.slice ? ' cur' : '');
+    const bars = [];
+    for (let i = 0; i < Math.min(pc[w], 5); i++) bars.push(`<i style="background:#fb923c"></i>`);
+    if (fc[w]) bars.push(`<i style="background:#667"></i>`);
+    d.innerHTML = `<div class="n">w${w}</div><div class="bar">${bars.join('')}</div>`;
+    d.title = `w=${w}: ピース ${pc[w]} セル / 固定 ${fc[w]} セル`;
+    d.onclick = () => setSlice(w);
+    box.appendChild(d);
+  }
+}
+
+function buildEditor() {
+  const ed = $('editor'); ed.innerHTML = '';
+  const N = S.N;
+  ed.style.gridTemplateColumns = `repeat(${N <= 6 ? 3 : 4}, 1fr)`;
+  for (let y = N - 1; y >= 0; y--) {
+    const layer = document.createElement('div'); layer.className = 'layer';
+    layer.innerHTML = `<div class="lt">y=${y}</div>`;
+    const g = document.createElement('div'); g.className = 'g';
+    g.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+    // 行 = z(奥 z=N-1 を上に), 列 = x
+    for (let z = N - 1; z >= 0; z--) for (let x = 0; x < N; x++) {
+      const c = document.createElement('div');
+      const k = x + ',' + y + ',' + z;
+      c.dataset.k = k;
+      c.title = `(x=${x}, y=${y}, z=${z})`;
+      c.onclick = () => togglePred(k);
+      c.onmouseenter = () => { hoverBox.position.set(x, y, z); hoverBox.visible = true; };
+      c.onmouseleave = () => { hoverBox.visible = false; };
+      g.appendChild(c);
+    }
+    layer.appendChild(g); ed.appendChild(layer);
+  }
+}
+
+function refreshEditor() {
+  for (const c of $('editor').querySelectorAll('[data-k]')) {
+    const k = c.dataset.k;
+    let cls = '';
+    if (S.phase === 'predicting') {
+      if (S.pred.has(k)) cls = 'on';
+      if (S.showPrev && S.prevSlice.has(k)) cls += ' prev';
+    } else if (S.phase === 'result') {
+      if (S.diff.match.has(k)) cls = 'match';
+      else if (S.diff.fp.has(k)) cls = 'fp';
+      else if (S.diff.fn.has(k)) cls = 'fn';
+      if (S.prevSlice.has(k)) cls += ' prev';
+    }
+    c.className = cls;
+  }
+}
+
+function updateLegend() {
+  const L = $('legend');
+  const sw = (c, t) => `<div><span class="sw" style="background:${c}"></span>${t}</div>`;
+  if (S.phase === 'predicting') {
+    L.innerHTML = sw('#facc15', 'あなたの予測') + (S.showPrev ? '<div><span class="sw" style="border:1px dashed #aab3d0"></span>回転前の断面</div>' : '')
+      + sw('#6b7280', '固定済みセル');
+  } else if (S.phase === 'result') {
+    L.innerHTML = sw('#60a5fa', '一致(予測どおり)') + sw('#ef4444', '予測したが実際には無い') + sw('#22c55e', '予測しなかったが実際に有る');
+  } else {
+    L.innerHTML = (S.piece ? sw('#' + S.piece.def.color.toString(16).padStart(6, '0'), '操作中ピース(この w の断面)') : '')
+      + sw('#6b7280', '固定済みセル')
+      + (S.showGhost ? sw('#60a5fa', 'w−1 のピース') + sw('#f87171', 'w+1 のピース') : '');
+  }
+}
+
+function updateUI() {
+  $('hudW').textContent = S.slice + ' / ' + (S.NW - 1);
+  $('slice').max = S.NW - 1;
+  $('slice').value = S.slice;
+  $('slice').disabled = S.phase === 'predicting';
+  const p = S.piece;
+  if (p) {
+    const inSlice = absCells().filter(c => c[3] === S.slice).length;
+    $('hudPiece').textContent = S.phase === 'predicting'
+      ? `${p.def.name}  回転前の状態から予測中`
+      : `${p.def.name}  pos(${p.pos.join(',')})  この断面に ${inSlice}/${p.rel.length} セル`;
+  } else $('hudPiece').textContent = 'ピースなし';
+
+  const ph = $('hudPhase');
+  if (S.phase === 'predicting') { ph.className = 'phase pred'; ph.textContent = `予測中: ${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°`; }
+  else if (S.phase === 'result') { ph.className = 'phase res'; ph.textContent = '答え合わせ'; }
+  else { ph.className = 'phase'; ph.textContent = S.predictMode ? '予測モード: 回転ボタンを押すと予測開始' : '通常モード'; }
+
+  const busy = S.phase !== 'idle';
+  document.querySelectorAll('#rotButtons button').forEach(b => b.disabled = busy || !p);
+  document.querySelectorAll('#moveButtons button').forEach(b => b.disabled = busy || !p);
+  $('btnLock').disabled = busy || !p;
+  $('btnSpawn').disabled = busy;
+  $('predToggle').checked = S.predictMode;
+
+  const pb = $('predbox');
+  if (S.phase === 'idle') { pb.style.display = 'none'; hoverBox.visible = false; }
+  else {
+    pb.style.display = '';
+    pb.className = S.phase === 'result' ? 'res' : '';
+    const rot = `<b style="color:#fb923c">${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°</b>`;
+    const acts = $('predActions');
+    if (S.phase === 'predicting') {
+      $('predTitle').innerHTML = `${rot} 回転後、<b>w=${S.slice}</b> の断面にピースのセルはどう現れる?<br><span class="muted">セルをクリックして予測を置く(y層ごと、行=z、列=x)。空なら「この断面から消える」という予測。</span>`;
+      $('score').innerHTML = `予測セル数: <b>${S.pred.size}</b>`;
+      acts.innerHTML = '';
+      acts.append(btn('実行(答え合わせ)', 'primary', executePrediction), btn('クリア', 'ghost', () => { S.pred.clear(); redraw(); }), btn('キャンセル', 'ghost', cancelPrediction));
+    } else {
+      const d = S.diff;
+      const kick = d.kick.some(v => v) ? `<div class="muted">壁キック: (${d.kick.join(',')}) だけ押し戻されました</div>` : '';
+      const perfect = d.fp.size === 0 && d.fn.size === 0;
+      $('predTitle').innerHTML = `${rot} 回転の結果(w=${S.slice})`;
+      $('score').innerHTML =
+        `<div style="font-size:15px;font-weight:700;color:${perfect ? 'var(--ok)' : '#f87171'}">${perfect ? '完全一致' : 'ズレあり'}</div>` +
+        `<span class="sw" style="background:#60a5fa"></span>一致 ${d.match.size}  ` +
+        `<span class="sw" style="background:#ef4444"></span>誤予測 ${d.fp.size}  ` +
+        `<span class="sw" style="background:#22c55e"></span>見落とし ${d.fn.size}` +
+        `<div class="muted">実際の断面: ${d.actualSize} セル(ピース全体 ${S.piece.rel.length} セル)</div>` + kick;
+      acts.innerHTML = '';
+      acts.append(btn('次へ', 'primary', finishResult));
+    }
+  }
+  refreshEditor();
+  updateWStrip();
+  updateLegend();
+
+  const lg = $('log');
+  if (S.log.length) lg.innerHTML = S.log.slice().reverse().map(e =>
+    `<div class="${e.perfect ? 'ok' : 'ng'}">${e.perfect ? '○' : '×'} ${e.piece} ${e.rot} w=${e.w}  一致${e.match} 誤${e.fp} 落${e.fn}</div>`).join('')
+    + `<div class="muted" style="margin-top:4px">完全一致 ${S.log.filter(e => e.perfect).length} / ${S.log.length}(w回転: ${S.log.filter(e => e.isW && e.perfect).length} / ${S.log.filter(e => e.isW).length})</div>`;
+}
+
+function btn(text, cls, fn) {
+  const b = document.createElement('button'); b.textContent = text; if (cls) b.className = cls; b.onclick = fn; return b;
+}
+
+function redraw() { renderVoxels(); updateUI(); }
+
+// =====================================================================
+// 操作
+// =====================================================================
+
+function setSlice(w) {
+  if (S.phase === 'predicting') return;
+  if (S.phase === 'result') finishResult();
+  S.slice = Math.max(0, Math.min(S.NW - 1, w));
+  redraw();
+}
+
+function move(axis, s) {
+  if (S.phase !== 'idle' || !S.piece) return;
+  const np = { ...S.piece, pos: S.piece.pos.slice() };
+  np.pos[axis] += s;
+  if (!fits(np)) { flash('そちらには動けません'); return; }
+  S.piece = np;
+  redraw();
+}
+
+function requestRotate(plane, sign) {
+  if (S.phase !== 'idle' || !S.piece) return;
+  if (!S.predictMode) {
+    const r = computeRotation(S.piece, plane, sign);
+    if (!r.ok) { flash(`${plane} 回転できません: ${r.reason}`); return; }
+    S.piece = r.piece;
+    if (r.kick.some(v => v)) flash(`壁キック (${r.kick.join(',')})`);
+    redraw();
+    return;
+  }
+  S.phase = 'predicting';
+  S.pending = { plane, sign };
+  S.pred = new Set();
+  S.prevSlice = sliceOfPiece(S.piece, S.slice);
+  redraw();
+}
+
+function togglePred(k) {
+  if (S.phase !== 'predicting') return;
+  if (S.pred.has(k)) S.pred.delete(k); else S.pred.add(k);
+  redraw();
+}
+
+function executePrediction() {
+  if (S.phase !== 'predicting') return;
+  const { plane, sign } = S.pending;
+  const r = computeRotation(S.piece, plane, sign);
+  if (!r.ok) { flash(`${plane} 回転できません: ${r.reason}`); cancelPrediction(); return; }
+  S.piece = r.piece;
+  const actual = sliceOfPiece(S.piece, S.slice);
+  const match = new Set(), fp = new Set(), fn = new Set();
+  for (const k of S.pred) (actual.has(k) ? match : fp).add(k);
+  for (const k of actual) if (!S.pred.has(k)) fn.add(k);
+  S.diff = { match, fp, fn, kick: r.kick, actualSize: actual.size };
+  S.phase = 'result';
+  const perfect = fp.size === 0 && fn.size === 0;
+  S.log.push({ piece: S.piece.def.name, rot: plane + (sign > 0 ? '+' : '−'), w: S.slice,
+    match: match.size, fp: fp.size, fn: fn.size, perfect, isW: PLANES.find(p => p.id === plane).w });
+  redraw();
+}
+
+function cancelPrediction() {
+  S.phase = 'idle'; S.pending = null; S.pred.clear(); redraw();
+}
+
+function finishResult() {
+  S.phase = 'idle'; S.pending = null; S.diff = null; S.pred.clear(); redraw();
+}
+
+function lockPiece() {
+  if (S.phase !== 'idle' || !S.piece) return;
+  for (const c of absCells()) S.placed.set(key4(c), S.piece.def.color);
+  S.piece = null;
+  nextPiece();
+}
+
+function nextPiece() {
+  const avail = PIECES.map((p, i) => i).filter(i => S.allow4D || !PIECES[i].is4D);
+  const cur = avail.indexOf(S.pieceIdx);
+  const idx = avail[(cur + 1) % avail.length];
+  if (!spawn(idx)) S.piece = null;
+  $('pieceSel').value = S.piece ? idx : $('pieceSel').value;
+  redraw();
+}
+
+function resetAll() {
+  const n = Math.max(3, Math.min(12, +$('sizeXYZ').value || 6));
+  const nw = Math.max(2, Math.min(12, +$('sizeW').value || 6));
+  $('sizeXYZ').value = n; $('sizeW').value = nw;
+  S.N = n; S.NW = nw;
+  S.slice = Math.floor((nw - 1) / 2);
+  S.placed.clear();
+  S.phase = 'idle'; S.pending = null; S.diff = null; S.pred.clear();
+  buildFrame();
+  buildEditor();
+  spawn(S.pieceIdx) || spawn(0);
+  buildPieceSelect();
+  redraw();
+}
+
+// --- イベント ---
+$('slice').oninput = e => setSlice(+e.target.value);
+$('predToggle').onchange = e => { S.predictMode = e.target.checked; if (!S.predictMode && S.phase === 'predicting') cancelPrediction(); else redraw(); };
+$('showPrev').onchange = e => { S.showPrev = e.target.checked; redraw(); };
+$('showGhost').onchange = e => { S.showGhost = e.target.checked; redraw(); };
+$('allow4D').onchange = e => { S.allow4D = e.target.checked; buildPieceSelect(); };
+$('btnSpawn').onclick = () => { if (S.phase === 'idle' && spawn(+$('pieceSel').value)) redraw(); };
+$('pieceSel').onchange = () => { if (S.phase === 'idle' && spawn(+$('pieceSel').value)) redraw(); };
+$('btnLock').onclick = lockPiece;
+$('btnReset').onclick = resetAll;
+
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'number') return;
+  if (e.target.tagName === 'SELECT') return;
+  const k = e.key;
+  if (k === 'ArrowUp') { setSlice(S.slice + 1); e.preventDefault(); return; }
+  if (k === 'ArrowDown') { setSlice(S.slice - 1); e.preventDefault(); return; }
+  if (k === 'Enter') { if (S.phase === 'predicting') executePrediction(); else if (S.phase === 'result') finishResult(); e.preventDefault(); return; }
+  if (k === 'Escape') { if (S.phase === 'predicting') cancelPrediction(); else if (S.phase === 'result') finishResult(); return; }
+  // e.code を優先(Shift+数字でも物理キーで判定できる)。空の環境では e.key から推定。
+  const code = e.code || (/^[a-z]$/i.test(k) ? 'Key' + k.toUpperCase() : /^\d$/.test(k) ? 'Digit' + k : k === ' ' ? 'Space' : '');
+  const digit = code.startsWith('Digit') ? +code.slice(5) : 0;
+  if (digit >= 1 && digit <= 6) { requestRotate(PLANES[digit - 1].id, e.shiftKey ? -1 : 1); e.preventDefault(); return; }
+  const moves = { KeyA: [0,-1], KeyD: [0,1], KeyF: [1,-1], KeyR: [1,1], KeyS: [2,-1], KeyW: [2,1], KeyG: [3,-1], KeyT: [3,1] };
+  if (moves[code]) { move(...moves[code]); return; }
+  if (code === 'KeyP') { S.predictMode = !S.predictMode; if (!S.predictMode && S.phase === 'predicting') cancelPrediction(); else redraw(); return; }
+  if (code === 'Space') { lockPiece(); e.preventDefault(); return; }
+  if (code === 'KeyN') { if (S.phase === 'idle') nextPiece(); return; }
+});
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+function loop() {
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+// --- 起動 ---
+buildRotButtons();
+buildMoveButtons();
+resize();
+resetAll();
+loop();
+
+// デバッグ/検証用に公開
+window.__4d = { S, PLANES, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
+</script>
+</body>
+</html>
