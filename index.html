@@ -66,6 +66,10 @@
   .muted { color: var(--muted); }
   .mono { font-family: ui-monospace, Consolas, monospace; }
 
+  #langBar { margin-bottom: 14px; }
+  #langBar button { padding: 3px 10px; }
+  #langBar button.active { background: var(--accent); color: #1a1a1a; font-weight: 700; }
+
   #wstrip { display: flex; gap: 3px; margin-top: 6px; }
   #wstrip .wc { flex: 1; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; cursor: pointer;
     text-align: center; padding: 3px 0 2px; position: relative; }
@@ -112,24 +116,30 @@
     <div id="hud">
       <div class="big">w = <span id="hudW">0</span></div>
       <div class="muted" id="hudPiece"></div>
-      <div class="phase" id="hudPhase">通常モード</div>
+      <div class="phase" id="hudPhase"></div>
     </div>
     <div id="legend"></div>
     <div id="msg"></div>
   </div>
 
   <div id="panel">
-    <h2>回転(90°)</h2>
+    <div class="row" id="langBar">
+      <span class="muted">Language</span>
+      <button id="langJa" data-lang="ja">日本語</button>
+      <button id="langEn" data-lang="en">English</button>
+    </div>
+
+    <h2 data-i18n="hRotate"></h2>
     <div class="rot" id="rotButtons"></div>
 
-    <h2>w スライス</h2>
+    <h2 data-i18n="hSlice"></h2>
     <div class="row"><input type="range" id="slice" min="0" max="5" step="1" value="0"></div>
     <div id="wstrip"></div>
-    <div class="row muted" style="margin-top:4px;font-size:11px">バー: <span class="sw" style="background:#fb923c;width:8px;height:8px"></span>操作中ピース / <span class="sw" style="background:#667;width:8px;height:8px"></span>固定済みセル</div>
+    <div class="row muted" style="margin-top:4px;font-size:11px"><span data-i18n="barLabel"></span> <span class="sw" style="background:#fb923c;width:8px;height:8px"></span><span data-i18n="barPiece"></span> / <span class="sw" style="background:#667;width:8px;height:8px"></span><span data-i18n="barPlaced"></span></div>
 
-    <h2>予測モード</h2>
-    <label class="chk"><input type="checkbox" id="predToggle"> 予測モード(回転前に断面を予測)</label>
-    <label class="chk"><input type="checkbox" id="showPrev" checked> 予測中に回転前の断面を点線で表示</label>
+    <h2 data-i18n="hPredict"></h2>
+    <label class="chk"><input type="checkbox" id="predToggle"> <span data-i18n="predToggle"></span></label>
+    <label class="chk"><input type="checkbox" id="showPrev" checked> <span data-i18n="showPrev"></span></label>
     <div id="predbox" style="display:none; margin-top:8px">
       <div id="predTitle"></div>
       <div id="editor"></div>
@@ -137,43 +147,145 @@
       <div class="row" style="margin-top:8px" id="predActions"></div>
     </div>
 
-    <h2>平行移動</h2>
+    <h2 data-i18n="hMove"></h2>
     <div class="move" id="moveButtons"></div>
 
-    <h2>ピース</h2>
+    <h2 data-i18n="hPiece"></h2>
     <div class="row">
       <select id="pieceSel"></select>
-      <button id="btnSpawn">出す</button>
-      <button id="btnLock">固定</button>
+      <button id="btnSpawn" data-i18n="btnSpawn"></button>
+      <button id="btnLock" data-i18n="btnLock"></button>
     </div>
-    <label class="chk" style="margin-top:6px"><input type="checkbox" id="allow4D"> 真の4Dピース(w方向に厚み)も選択肢に含める</label>
-    <label class="chk"><input type="checkbox" id="showGhost"> 隣接スライス (w±1) のピースを薄く表示</label>
+    <label class="chk" style="margin-top:6px"><input type="checkbox" id="allow4D"> <span data-i18n="allow4D"></span></label>
+    <label class="chk"><input type="checkbox" id="showGhost"> <span data-i18n="showGhost"></span></label>
 
-    <h2>グリッド</h2>
+    <h2 data-i18n="hGrid"></h2>
     <div class="row">
       x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="6">
       w <input type="number" id="sizeW" min="2" max="12" value="6">
-      <button id="btnReset" class="ghost">リセット</button>
+      <button id="btnReset" class="ghost" data-i18n="btnReset"></button>
     </div>
 
-    <h2>予測ログ</h2>
-    <div id="log"><span class="muted">まだ試行なし</span></div>
+    <h2 data-i18n="hLog"></h2>
+    <div id="log"></div>
 
-    <h2>キー操作</h2>
-    <div class="keys">
-      <kbd>↑</kbd><kbd>↓</kbd> スライス w ±1<br>
-      <kbd>1</kbd>–<kbd>6</kbd> 回転 xy xz yz <b style="color:#fb923c">xw yw zw</b>(<kbd>Shift</kbd>で逆回転)<br>
-      <kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>
-      <kbd>P</kbd> 予測モード切替  <kbd>Enter</kbd> 実行/次へ  <kbd>Esc</kbd> キャンセル<br>
-      <kbd>Space</kbd> 固定  <kbd>N</kbd> 次のピース<br>
-      ドラッグで視点回転、ホイールでズーム
-    </div>
+    <h2 data-i18n="hKeys"></h2>
+    <div class="keys" data-i18n-html="keysHtml"></div>
   </div>
 </div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// =====================================================================
+// i18n(ja / en)
+// =====================================================================
+
+const I18N = {
+  ja: {
+    hRotate: '回転(90°)', hSlice: 'w スライス', hPredict: '予測モード', hMove: '平行移動',
+    hPiece: 'ピース', hGrid: 'グリッド', hLog: '予測ログ', hKeys: 'キー操作',
+    barLabel: 'バー:', barPiece: '操作中ピース', barPlaced: '固定済みセル',
+    predToggle: '予測モード(回転前に断面を予測)',
+    showPrev: '予測中に回転前の断面を点線で表示',
+    btnSpawn: '出す', btnLock: '固定', btnReset: 'リセット',
+    allow4D: '真の4Dピース(w方向に厚み)も選択肢に含める',
+    showGhost: '隣接スライス (w±1) のピースを薄く表示',
+    keysHtml:
+      '<kbd>↑</kbd><kbd>↓</kbd> スライス w ±1<br>' +
+      '<kbd>1</kbd>–<kbd>6</kbd> 回転 xy xz yz <b style="color:#fb923c">xw yw zw</b>(<kbd>Shift</kbd>で逆回転)<br>' +
+      '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
+      '<kbd>P</kbd> 予測モード切替  <kbd>Enter</kbd> 実行/次へ  <kbd>Esc</kbd> キャンセル<br>' +
+      '<kbd>Space</kbd> 固定  <kbd>N</kbd> 次のピース<br>' +
+      'ドラッグで視点回転、ホイールでズーム',
+    logEmpty: 'まだ試行なし',
+    modeNormal: '通常モード',
+    modePredict: '予測モード: 回転ボタンを押すと予測開始',
+    phasePredicting: '予測中: {rot}',
+    phaseResult: '答え合わせ',
+    noPiece: 'ピースなし',
+    pieceInfoPred: '{name}  回転前の状態から予測中',
+    pieceInfo: '{name}  pos({pos})  この断面に {n}/{total} セル',
+    legPred: 'あなたの予測', legPrev: '回転前の断面', legPlaced: '固定済みセル',
+    legMatch: '一致(予測どおり)', legFp: '予測したが実際には無い', legFn: '予測しなかったが実際に有る',
+    legPiece: '操作中ピース(この w の断面)', legGhostM: 'w−1 のピース', legGhostP: 'w+1 のピース',
+    predTitle: '{rot} 回転後、<b>w={w}</b> の断面にピースのセルはどう現れる?<br><span class="muted">セルをクリックして予測を置く(y層ごと、行=z、列=x)。空なら「この断面から消える」という予測。</span>',
+    predCount: '予測セル数: <b>{n}</b>',
+    btnExec: '実行(答え合わせ)', btnClear: 'クリア', btnCancel: 'キャンセル', btnNext: '次へ',
+    resTitle: '{rot} 回転の結果(w={w})',
+    perfect: '完全一致', off: 'ズレあり',
+    sMatch: '一致', sFp: '誤予測', sFn: '見落とし',
+    actualInfo: '実際の断面: {n} セル(ピース全体 {total} セル)',
+    kickNote: '壁キック: ({k}) だけ押し戻されました',
+    kickFlash: '壁キック ({k})',
+    logCounts: '一致{m} 誤{fp} 落{fn}',
+    logSummary: '完全一致 {p} / {n}(w回転: {wp} / {wn})',
+    cantMove: 'そちらには動けません',
+    rotFail: '{plane} 回転できません: {reason}',
+    errBounds: 'グリッドに収まりません', errCollide: '固定済みセルと衝突します',
+    spawnNoFit: 'このピースはグリッドに収まりません',
+    spawnFull: '空き位置がありません(リセットしてください)',
+    rotTitle: '{plane} 平面で {sign}90° 回転({a}→{b})  キー: {key}',
+    wcTitle: 'w={w}: ピース {p} セル / 固定 {f} セル',
+  },
+  en: {
+    hRotate: 'Rotate (90°)', hSlice: 'w slice', hPredict: 'Prediction mode', hMove: 'Translate',
+    hPiece: 'Piece', hGrid: 'Grid', hLog: 'Prediction log', hKeys: 'Keys',
+    barLabel: 'Bars:', barPiece: 'active piece', barPlaced: 'locked cells',
+    predToggle: 'Prediction mode (predict the slice before rotating)',
+    showPrev: 'Show the pre-rotation slice as a dotted outline while predicting',
+    btnSpawn: 'Spawn', btnLock: 'Lock', btnReset: 'Reset',
+    allow4D: 'Include true 4D pieces (thick in w)',
+    showGhost: 'Faintly show the piece in adjacent slices (w±1)',
+    keysHtml:
+      '<kbd>↑</kbd><kbd>↓</kbd> slice w ±1<br>' +
+      '<kbd>1</kbd>–<kbd>6</kbd> rotate xy xz yz <b style="color:#fb923c">xw yw zw</b> (<kbd>Shift</kbd> reverses)<br>' +
+      '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
+      '<kbd>P</kbd> toggle prediction  <kbd>Enter</kbd> run / next  <kbd>Esc</kbd> cancel<br>' +
+      '<kbd>Space</kbd> lock  <kbd>N</kbd> next piece<br>' +
+      'Drag to orbit, wheel to zoom',
+    logEmpty: 'No attempts yet',
+    modeNormal: 'Normal mode',
+    modePredict: 'Prediction mode: press a rotate button to start predicting',
+    phasePredicting: 'Predicting: {rot}',
+    phaseResult: 'Result',
+    noPiece: 'No piece',
+    pieceInfoPred: '{name}  predicting from the pre-rotation state',
+    pieceInfo: '{name}  pos({pos})  {n}/{total} cells in this slice',
+    legPred: 'Your prediction', legPrev: 'Pre-rotation slice', legPlaced: 'Locked cells',
+    legMatch: 'Match (as predicted)', legFp: 'Predicted, but not there', legFn: 'There, but not predicted',
+    legPiece: 'Active piece (this w slice)', legGhostM: 'Piece at w−1', legGhostP: 'Piece at w+1',
+    predTitle: 'After the {rot} rotation, how will the piece appear in the <b>w={w}</b> slice?<br><span class="muted">Click cells to place your prediction (one grid per y layer; rows = z, columns = x). Leave it empty to predict the piece vanishes from this slice.</span>',
+    predCount: 'Predicted cells: <b>{n}</b>',
+    btnExec: 'Run (check answer)', btnClear: 'Clear', btnCancel: 'Cancel', btnNext: 'Next',
+    resTitle: 'Result of {rot} rotation (w={w})',
+    perfect: 'Perfect match', off: 'Off target',
+    sMatch: 'Match', sFp: 'Wrong', sFn: 'Missed',
+    actualInfo: 'Actual slice: {n} cells (whole piece: {total} cells)',
+    kickNote: 'Wall kick: pushed back by ({k})',
+    kickFlash: 'Wall kick ({k})',
+    logCounts: 'match {m} wrong {fp} missed {fn}',
+    logSummary: 'Perfect {p} / {n} (w rotations: {wp} / {wn})',
+    cantMove: "Can't move that way",
+    rotFail: "Can't rotate {plane}: {reason}",
+    errBounds: "Doesn't fit in the grid", errCollide: 'Collides with locked cells',
+    spawnNoFit: "This piece doesn't fit in the grid",
+    spawnFull: 'No free position (please reset)',
+    rotTitle: 'Rotate {sign}90° in the {plane} plane ({a}→{b})  Key: {key}',
+    wcTitle: 'w={w}: piece {p} cells / locked {f} cells',
+  },
+};
+
+let LANG = 'ja';
+try { LANG = localStorage.getItem('4dt-lang') || (/^ja/i.test(navigator.language) ? 'ja' : 'en'); } catch (e) { LANG = /^ja/i.test(navigator.language) ? 'ja' : 'en'; }
+if (!I18N[LANG]) LANG = 'en';
+
+function t(key, vars) {
+  let s = I18N[LANG][key];
+  if (s === undefined) s = I18N.en[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '') : s;
+}
 
 // =====================================================================
 // 4D ロジック(素のJS。Three.js には依存しない)
@@ -213,16 +325,18 @@ const PIECES = [
   { name: 'T',        color: 0xa855f7, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[0,1,0,0]] },
   { name: 'L',        color: 0xf97316, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[1,1,0,0]] },
   { name: 'S',        color: 0x22c55e, cells: [[-1,0,0,0],[0,0,0,0],[0,1,0,0],[1,1,0,0]] },
-  { name: '三脚',     color: 0xec4899, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,1,0]] },
-  { name: 'ねじれA',  color: 0x3b82f6, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
-  { name: 'ねじれB',  color: 0x14b8a6, cells: [[-1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
+  { name: 'Tripod',   ja: '三脚',       color: 0xec4899, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,1,0]] },
+  { name: 'Twist A',  ja: 'ねじれA',    color: 0x3b82f6, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
+  { name: 'Twist B',  ja: 'ねじれB',    color: 0x14b8a6, cells: [[-1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,1,0]] },
   // --- 真の4Dピース(w方向にも連結) ---
-  { name: '4D: xw正方形',   color: 0xf43f5e, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,0,0,1],[1,0,0,1]] },
+  { name: '4D: xw square',    ja: '4D: xw正方形',   color: 0xf43f5e, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,0,0,1],[1,0,0,1]] },
   { name: '4D: wL',         color: 0xe11d48, is4D: true, cells: [[-1,0,0,0],[0,0,0,0],[1,0,0,0],[1,0,0,1]] },
-  { name: '4D: 四脚の3本',  color: 0xd946ef, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]] },
-  { name: '4D: wねじれ',    color: 0x8b5cf6, is4D: true, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,0,1]] },
+  { name: '4D: 3-arm corner', ja: '4D: 四脚の3本',  color: 0xd946ef, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[0,0,0,1]] },
+  { name: '4D: w-twist',      ja: '4D: wねじれ',    color: 0x8b5cf6, is4D: true, cells: [[1,0,0,0],[0,0,0,0],[0,1,0,0],[0,1,0,1]] },
   { name: '4D: 2x2x1x2',    color: 0xfb7185, is4D: true, cells: [[0,0,0,0],[1,0,0,0],[0,1,0,0],[1,1,0,0],[0,0,0,1],[1,0,0,1],[0,1,0,1],[1,1,0,1]] },
 ];
+
+const pieceName = def => (LANG === 'ja' && def.ja) || def.name;
 
 const S = {
   N: 6,            // x,y,z のサイズ
@@ -268,9 +382,9 @@ function computeRotation(piece, planeId, sign) {
   const m = rotationMatrix(pl.a, pl.b, sign);
   const rel = piece.rel.map(r => applyMatrix(m, r));
   const k = kickIntoBounds(rel, piece.pos);
-  if (!k) return { ok: false, reason: 'グリッドに収まりません' };
+  if (!k) return { ok: false, reason: 'errBounds' };
   const np = { def: piece.def, rel, pos: k.pos };
-  if (!fits(np)) return { ok: false, reason: '固定済みセルと衝突します' };
+  if (!fits(np)) return { ok: false, reason: 'errCollide' };
   return { ok: true, piece: np, kick: k.kick };
 }
 
@@ -284,7 +398,7 @@ function spawn(idx) {
   const def = PIECES[idx];
   const mid = Math.floor((S.N - 1) / 2);
   const rel = def.cells.map(c => c.slice());
-  if (!kickIntoBounds(rel, [mid, mid, mid, S.slice])) { flash('このピースはグリッドに収まりません'); return false; }
+  if (!kickIntoBounds(rel, [mid, mid, mid, S.slice])) { flash(t('spawnNoFit')); return false; }
   // 中央・現在スライスに近い空き位置を探す(w のズレを最も重く見る)
   const cost = q => Math.abs(q[3] - S.slice) * 100 + Math.abs(q[0] - mid) + Math.abs(q[1] - mid) + Math.abs(q[2] - mid);
   let best = null;
@@ -294,7 +408,7 @@ function spawn(idx) {
     const p = { def, rel, pos: q };
     if (fits(p)) best = p;
   }
-  if (!best) { flash('空き位置がありません(リセットしてください)'); return false; }
+  if (!best) { flash(t('spawnFull')); return false; }
   S.piece = best;
   S.pieceIdx = idx;
   return true;
@@ -469,7 +583,7 @@ function buildRotButtons() {
       const b = document.createElement('button');
       b.textContent = pl.id + (sign > 0 ? ' +' : ' −');
       if (pl.w) b.className = 'w';
-      b.title = `${pl.id} 平面で ${sign > 0 ? '+' : '−'}90° 回転(${AXES[pl.a]}→${sign > 0 ? '' : '−'}${AXES[pl.b]})  キー: ${i + 1}${sign < 0 ? ' + Shift' : ''}`;
+      b.title = t('rotTitle', { plane: pl.id, sign: sign > 0 ? '+' : '−', a: AXES[pl.a], b: (sign > 0 ? '' : '−') + AXES[pl.b], key: (i + 1) + (sign < 0 ? ' + Shift' : '') });
       b.dataset.rot = pl.id + ':' + sign;
       b.onclick = () => requestRotate(pl.id, sign);
       box.appendChild(b);
@@ -492,7 +606,7 @@ function buildPieceSelect() {
   const sel = $('pieceSel'); sel.innerHTML = '';
   PIECES.forEach((p, i) => {
     if (p.is4D && !S.allow4D) return;
-    const o = document.createElement('option'); o.value = i; o.textContent = p.name; sel.appendChild(o);
+    const o = document.createElement('option'); o.value = i; o.textContent = pieceName(p); sel.appendChild(o);
   });
   if (S.piece) sel.value = PIECES.indexOf(S.piece.def);
 }
@@ -509,7 +623,7 @@ function updateWStrip() {
     for (let i = 0; i < Math.min(pc[w], 5); i++) bars.push(`<i style="background:#fb923c"></i>`);
     if (fc[w]) bars.push(`<i style="background:#667"></i>`);
     d.innerHTML = `<div class="n">w${w}</div><div class="bar">${bars.join('')}</div>`;
-    d.title = `w=${w}: ピース ${pc[w]} セル / 固定 ${fc[w]} セル`;
+    d.title = t('wcTitle', { w, p: pc[w], f: fc[w] });
     d.onclick = () => setSlice(w);
     box.appendChild(d);
   }
@@ -558,16 +672,16 @@ function refreshEditor() {
 
 function updateLegend() {
   const L = $('legend');
-  const sw = (c, t) => `<div><span class="sw" style="background:${c}"></span>${t}</div>`;
+  const sw = (c, label) => `<div><span class="sw" style="background:${c}"></span>${label}</div>`;
   if (S.phase === 'predicting') {
-    L.innerHTML = sw('#facc15', 'あなたの予測') + (S.showPrev ? '<div><span class="sw" style="border:1px dashed #aab3d0"></span>回転前の断面</div>' : '')
-      + sw('#6b7280', '固定済みセル');
+    L.innerHTML = sw('#facc15', t('legPred')) + (S.showPrev ? `<div><span class="sw" style="border:1px dashed #aab3d0"></span>${t('legPrev')}</div>` : '')
+      + sw('#6b7280', t('legPlaced'));
   } else if (S.phase === 'result') {
-    L.innerHTML = sw('#60a5fa', '一致(予測どおり)') + sw('#ef4444', '予測したが実際には無い') + sw('#22c55e', '予測しなかったが実際に有る');
+    L.innerHTML = sw('#60a5fa', t('legMatch')) + sw('#ef4444', t('legFp')) + sw('#22c55e', t('legFn'));
   } else {
-    L.innerHTML = (S.piece ? sw('#' + S.piece.def.color.toString(16).padStart(6, '0'), '操作中ピース(この w の断面)') : '')
-      + sw('#6b7280', '固定済みセル')
-      + (S.showGhost ? sw('#60a5fa', 'w−1 のピース') + sw('#f87171', 'w+1 のピース') : '');
+    L.innerHTML = (S.piece ? sw('#' + S.piece.def.color.toString(16).padStart(6, '0'), t('legPiece')) : '')
+      + sw('#6b7280', t('legPlaced'))
+      + (S.showGhost ? sw('#60a5fa', t('legGhostM')) + sw('#f87171', t('legGhostP')) : '');
   }
 }
 
@@ -580,14 +694,14 @@ function updateUI() {
   if (p) {
     const inSlice = absCells().filter(c => c[3] === S.slice).length;
     $('hudPiece').textContent = S.phase === 'predicting'
-      ? `${p.def.name}  回転前の状態から予測中`
-      : `${p.def.name}  pos(${p.pos.join(',')})  この断面に ${inSlice}/${p.rel.length} セル`;
-  } else $('hudPiece').textContent = 'ピースなし';
+      ? t('pieceInfoPred', { name: pieceName(p.def) })
+      : t('pieceInfo', { name: pieceName(p.def), pos: p.pos.join(','), n: inSlice, total: p.rel.length });
+  } else $('hudPiece').textContent = t('noPiece');
 
   const ph = $('hudPhase');
-  if (S.phase === 'predicting') { ph.className = 'phase pred'; ph.textContent = `予測中: ${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°`; }
-  else if (S.phase === 'result') { ph.className = 'phase res'; ph.textContent = '答え合わせ'; }
-  else { ph.className = 'phase'; ph.textContent = S.predictMode ? '予測モード: 回転ボタンを押すと予測開始' : '通常モード'; }
+  if (S.phase === 'predicting') { ph.className = 'phase pred'; ph.textContent = t('phasePredicting', { rot: `${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°` }); }
+  else if (S.phase === 'result') { ph.className = 'phase res'; ph.textContent = t('phaseResult'); }
+  else { ph.className = 'phase'; ph.textContent = S.predictMode ? t('modePredict') : t('modeNormal'); }
 
   const busy = S.phase !== 'idle';
   document.querySelectorAll('#rotButtons button').forEach(b => b.disabled = busy || !p);
@@ -604,23 +718,23 @@ function updateUI() {
     const rot = `<b style="color:#fb923c">${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°</b>`;
     const acts = $('predActions');
     if (S.phase === 'predicting') {
-      $('predTitle').innerHTML = `${rot} 回転後、<b>w=${S.slice}</b> の断面にピースのセルはどう現れる?<br><span class="muted">セルをクリックして予測を置く(y層ごと、行=z、列=x)。空なら「この断面から消える」という予測。</span>`;
-      $('score').innerHTML = `予測セル数: <b>${S.pred.size}</b>`;
+      $('predTitle').innerHTML = t('predTitle', { rot, w: S.slice });
+      $('score').innerHTML = t('predCount', { n: S.pred.size });
       acts.innerHTML = '';
-      acts.append(btn('実行(答え合わせ)', 'primary', executePrediction), btn('クリア', 'ghost', () => { S.pred.clear(); redraw(); }), btn('キャンセル', 'ghost', cancelPrediction));
+      acts.append(btn(t('btnExec'), 'primary', executePrediction), btn(t('btnClear'), 'ghost', () => { S.pred.clear(); redraw(); }), btn(t('btnCancel'), 'ghost', cancelPrediction));
     } else {
       const d = S.diff;
-      const kick = d.kick.some(v => v) ? `<div class="muted">壁キック: (${d.kick.join(',')}) だけ押し戻されました</div>` : '';
+      const kick = d.kick.some(v => v) ? `<div class="muted">${t('kickNote', { k: d.kick.join(',') })}</div>` : '';
       const perfect = d.fp.size === 0 && d.fn.size === 0;
-      $('predTitle').innerHTML = `${rot} 回転の結果(w=${S.slice})`;
+      $('predTitle').innerHTML = t('resTitle', { rot, w: S.slice });
       $('score').innerHTML =
-        `<div style="font-size:15px;font-weight:700;color:${perfect ? 'var(--ok)' : '#f87171'}">${perfect ? '完全一致' : 'ズレあり'}</div>` +
-        `<span class="sw" style="background:#60a5fa"></span>一致 ${d.match.size}  ` +
-        `<span class="sw" style="background:#ef4444"></span>誤予測 ${d.fp.size}  ` +
-        `<span class="sw" style="background:#22c55e"></span>見落とし ${d.fn.size}` +
-        `<div class="muted">実際の断面: ${d.actualSize} セル(ピース全体 ${S.piece.rel.length} セル)</div>` + kick;
+        `<div style="font-size:15px;font-weight:700;color:${perfect ? 'var(--ok)' : '#f87171'}">${perfect ? t('perfect') : t('off')}</div>` +
+        `<span class="sw" style="background:#60a5fa"></span>${t('sMatch')} ${d.match.size}  ` +
+        `<span class="sw" style="background:#ef4444"></span>${t('sFp')} ${d.fp.size}  ` +
+        `<span class="sw" style="background:#22c55e"></span>${t('sFn')} ${d.fn.size}` +
+        `<div class="muted">${t('actualInfo', { n: d.actualSize, total: S.piece.rel.length })}</div>` + kick;
       acts.innerHTML = '';
-      acts.append(btn('次へ', 'primary', finishResult));
+      acts.append(btn(t('btnNext'), 'primary', finishResult));
     }
   }
   refreshEditor();
@@ -629,8 +743,9 @@ function updateUI() {
 
   const lg = $('log');
   if (S.log.length) lg.innerHTML = S.log.slice().reverse().map(e =>
-    `<div class="${e.perfect ? 'ok' : 'ng'}">${e.perfect ? '○' : '×'} ${e.piece} ${e.rot} w=${e.w}  一致${e.match} 誤${e.fp} 落${e.fn}</div>`).join('')
-    + `<div class="muted" style="margin-top:4px">完全一致 ${S.log.filter(e => e.perfect).length} / ${S.log.length}(w回転: ${S.log.filter(e => e.isW && e.perfect).length} / ${S.log.filter(e => e.isW).length})</div>`;
+    `<div class="${e.perfect ? 'ok' : 'ng'}">${e.perfect ? '○' : '×'} ${pieceName(e.def)} ${e.rot} w=${e.w}  ${t('logCounts', { m: e.match, fp: e.fp, fn: e.fn })}</div>`).join('')
+    + `<div class="muted" style="margin-top:4px">${t('logSummary', { p: S.log.filter(e => e.perfect).length, n: S.log.length, wp: S.log.filter(e => e.isW && e.perfect).length, wn: S.log.filter(e => e.isW).length })}</div>`;
+  else lg.innerHTML = `<span class="muted">${t('logEmpty')}</span>`;
 }
 
 function btn(text, cls, fn) {
@@ -654,7 +769,7 @@ function move(axis, s) {
   if (S.phase !== 'idle' || !S.piece) return;
   const np = { ...S.piece, pos: S.piece.pos.slice() };
   np.pos[axis] += s;
-  if (!fits(np)) { flash('そちらには動けません'); return; }
+  if (!fits(np)) { flash(t('cantMove')); return; }
   S.piece = np;
   redraw();
 }
@@ -663,9 +778,9 @@ function requestRotate(plane, sign) {
   if (S.phase !== 'idle' || !S.piece) return;
   if (!S.predictMode) {
     const r = computeRotation(S.piece, plane, sign);
-    if (!r.ok) { flash(`${plane} 回転できません: ${r.reason}`); return; }
+    if (!r.ok) { flash(t('rotFail', { plane, reason: t(r.reason) })); return; }
     S.piece = r.piece;
-    if (r.kick.some(v => v)) flash(`壁キック (${r.kick.join(',')})`);
+    if (r.kick.some(v => v)) flash(t('kickFlash', { k: r.kick.join(',') }));
     redraw();
     return;
   }
@@ -686,7 +801,7 @@ function executePrediction() {
   if (S.phase !== 'predicting') return;
   const { plane, sign } = S.pending;
   const r = computeRotation(S.piece, plane, sign);
-  if (!r.ok) { flash(`${plane} 回転できません: ${r.reason}`); cancelPrediction(); return; }
+  if (!r.ok) { flash(t('rotFail', { plane, reason: t(r.reason) })); cancelPrediction(); return; }
   S.piece = r.piece;
   const actual = sliceOfPiece(S.piece, S.slice);
   const match = new Set(), fp = new Set(), fn = new Set();
@@ -695,7 +810,7 @@ function executePrediction() {
   S.diff = { match, fp, fn, kick: r.kick, actualSize: actual.size };
   S.phase = 'result';
   const perfect = fp.size === 0 && fn.size === 0;
-  S.log.push({ piece: S.piece.def.name, rot: plane + (sign > 0 ? '+' : '−'), w: S.slice,
+  S.log.push({ def: S.piece.def, rot: plane + (sign > 0 ? '+' : '−'), w: S.slice,
     match: match.size, fp: fp.size, fn: fn.size, perfect, isW: PLANES.find(p => p.id === plane).w });
   redraw();
 }
@@ -738,6 +853,24 @@ function resetAll() {
   buildPieceSelect();
   redraw();
 }
+
+// --- 言語切替 ---
+function applyStaticI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('#langBar button').forEach(b => b.classList.toggle('active', b.dataset.lang === LANG));
+}
+function setLang(lang, persist) {
+  if (!I18N[lang]) return;
+  LANG = lang;
+  if (persist) { try { localStorage.setItem('4dt-lang', lang); } catch (e) {} }
+  applyStaticI18n();
+  buildRotButtons();
+  buildPieceSelect();
+  redraw();
+}
+document.querySelectorAll('#langBar button').forEach(b => { b.onclick = () => setLang(b.dataset.lang, true); });
 
 // --- イベント ---
 $('slice').oninput = e => setSlice(+e.target.value);
@@ -786,11 +919,12 @@ function loop() {
 buildRotButtons();
 buildMoveButtons();
 resize();
+applyStaticI18n();
 resetAll();
 loop();
 
 // デバッグ/検証用に公開
-window.__4d = { S, PLANES, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
+window.__4d = { S, PLANES, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
 </script>
 </body>
 </html>
