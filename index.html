@@ -36,6 +36,11 @@
   #msg.show { opacity: 1; }
   #legend { position: absolute; right: 12px; bottom: 12px; background: rgba(20,22,30,.85); border: 1px solid var(--line);
     border-radius: 6px; padding: 8px 10px; line-height: 1.7; pointer-events: none; }
+  #over { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,11,16,.72); }
+  #over[hidden] { display: none; }
+  #over .box { background: var(--panel); border: 1px solid var(--ng); border-radius: 10px; padding: 22px 28px; text-align: center; line-height: 1.8; }
+  #over .ttl { font-size: 26px; font-weight: 800; color: #f87171; letter-spacing: .04em; }
+  #over button { margin-top: 12px; padding: 8px 20px; }
   .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
 
   #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px 24px; }
@@ -117,9 +122,17 @@
       <div class="big">w = <span id="hudW">0</span></div>
       <div class="muted" id="hudPiece"></div>
       <div class="phase" id="hudPhase"></div>
+      <div class="muted" id="hudClear"></div>
     </div>
     <div id="legend"></div>
     <div id="msg"></div>
+    <div id="over" hidden>
+      <div class="box">
+        <div class="ttl" data-i18n="overTitle"></div>
+        <div id="overStats"></div>
+        <button class="primary" id="btnRetry" data-i18n="btnRetry"></button>
+      </div>
+    </div>
   </div>
 
   <div id="panel">
@@ -151,7 +164,8 @@
     <div class="move" id="moveButtons"></div>
 
     <h2 data-i18n="hPiece"></h2>
-    <div class="row">
+    <label class="chk"><input type="checkbox" id="practice"> <span data-i18n="practice"></span></label>
+    <div class="row" id="practiceRow" style="margin-top:6px" hidden>
       <select id="pieceSel"></select>
       <button id="btnSpawn" data-i18n="btnSpawn"></button>
       <button id="btnLock" data-i18n="btnLock"></button>
@@ -161,7 +175,7 @@
 
     <h2 data-i18n="hGrid"></h2>
     <div class="row">
-      x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="6">
+      x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="3">
       w <input type="number" id="sizeW" min="2" max="12" value="6">
       <button id="btnReset" class="ghost" data-i18n="btnReset"></button>
     </div>
@@ -190,6 +204,8 @@ const I18N = {
     predToggle: '予測モード(回転前に断面を予測)',
     showPrev: '予測中に回転前の断面を点線で表示',
     btnSpawn: '出す', btnLock: '固定', btnReset: 'リセット',
+    practice: '練習モード(ピースを自由に選べる。切り替えるとリセット)',
+    practiceTag: '練習',
     allow4D: '真の4Dピース(w方向に厚み)も選択肢に含める',
     showGhost: '隣接スライス (w±1) のピースを薄く表示',
     keysHtml:
@@ -197,7 +213,8 @@ const I18N = {
       '<kbd>1</kbd>–<kbd>6</kbd> 回転 xy xz yz <b style="color:#fb923c">xw yw zw</b>(<kbd>Shift</kbd>で逆回転)<br>' +
       '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
       '<kbd>P</kbd> 予測モード切替  <kbd>Enter</kbd> 実行/次へ  <kbd>Esc</kbd> キャンセル<br>' +
-      '<kbd>Space</kbd> 固定  <kbd>N</kbd> 次のピース<br>' +
+      '<kbd>Space</kbd> 固定<br>' +
+      'ルール: ピースは常に中央の箱 (w 中央) の真ん中に出る。3D の箱が埋まると消える。出現位置がふさがったら終了。<br>' +
       'ドラッグで視点回転、ホイールでズーム',
     logEmpty: 'まだ試行なし',
     modeNormal: '通常モード',
@@ -221,6 +238,13 @@ const I18N = {
     kickFlash: '壁キック ({k})',
     logCounts: '一致{m} 誤{fp} 落{fn}',
     logSummary: '完全一致 {p} / {n}(w回転: {wp} / {wn})',
+    boxCleared: '箱 w={w} が埋まって消えました!',
+    hudCleared: '消した箱: {n}',
+    hudScore: 'ピース {p} / 消した箱 {n}',
+    overTitle: 'GAME OVER',
+    overStats: '出現位置がふさがりました。<br>置いたピース <b>{p}</b> / 消した箱 <b>{n}</b>',
+    btnRetry: 'もう一度 (Enter)',
+    spawnBlocked: '出現位置がふさがっています',
     cantMove: 'そちらには動けません',
     rotFail: '{plane} 回転できません: {reason}',
     errBounds: 'グリッドに収まりません', errCollide: '固定済みセルと衝突します',
@@ -236,6 +260,8 @@ const I18N = {
     predToggle: 'Prediction mode (predict the slice before rotating)',
     showPrev: 'Show the pre-rotation slice as a dotted outline while predicting',
     btnSpawn: 'Spawn', btnLock: 'Lock', btnReset: 'Reset',
+    practice: 'Practice mode (pick any piece; toggling resets the game)',
+    practiceTag: 'Practice',
     allow4D: 'Include true 4D pieces (thick in w)',
     showGhost: 'Faintly show the piece in adjacent slices (w±1)',
     keysHtml:
@@ -243,7 +269,8 @@ const I18N = {
       '<kbd>1</kbd>–<kbd>6</kbd> rotate xy xz yz <b style="color:#fb923c">xw yw zw</b> (<kbd>Shift</kbd> reverses)<br>' +
       '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
       '<kbd>P</kbd> toggle prediction  <kbd>Enter</kbd> run / next  <kbd>Esc</kbd> cancel<br>' +
-      '<kbd>Space</kbd> lock  <kbd>N</kbd> next piece<br>' +
+      '<kbd>Space</kbd> lock<br>' +
+      'Rules: pieces always spawn at the center of the middle box (middle w). A full 3D box is cleared. Game over when the spawn point is blocked.<br>' +
       'Drag to orbit, wheel to zoom',
     logEmpty: 'No attempts yet',
     modeNormal: 'Normal mode',
@@ -267,6 +294,13 @@ const I18N = {
     kickFlash: 'Wall kick ({k})',
     logCounts: 'match {m} wrong {fp} missed {fn}',
     logSummary: 'Perfect {p} / {n} (w rotations: {wp} / {wn})',
+    boxCleared: 'Box w={w} was filled and cleared!',
+    hudCleared: 'Boxes cleared: {n}',
+    hudScore: 'Pieces {p} / Boxes cleared {n}',
+    overTitle: 'GAME OVER',
+    overStats: 'The spawn point is blocked.<br>Pieces placed <b>{p}</b> / Boxes cleared <b>{n}</b>',
+    btnRetry: 'Play again (Enter)',
+    spawnBlocked: 'The spawn point is blocked',
     cantMove: "Can't move that way",
     rotFail: "Can't rotate {plane}: {reason}",
     errBounds: "Doesn't fit in the grid", errCollide: 'Collides with locked cells',
@@ -339,7 +373,7 @@ const PIECES = [
 const pieceName = def => (LANG === 'ja' && def.ja) || def.name;
 
 const S = {
-  N: 6,            // x,y,z のサイズ
+  N: 3,            // x,y,z のサイズ(= 3D の箱の一辺)
   NW: 6,           // w のサイズ
   slice: 2,
   placed: new Map(),   // key4 -> color
@@ -353,8 +387,12 @@ const S = {
   showPrev: true,
   showGhost: false,
   allow4D: false,
+  practice: false,  // 練習モード: ピースを自由に選べる
   pieceIdx: 0,
   log: [],
+  cleared: 0,
+  pieces: 0,       // 固定したピース数
+  gameOver: false,
 };
 
 const sizeOf = axis => axis === 3 ? S.NW : S.N;
@@ -394,24 +432,28 @@ function sliceOfPiece(piece, w) {
   return s;
 }
 
+// 出現位置は固定: xyz は箱の中央、w は真ん中。ふさがっていたら 'blocked' を返す。
+// 箱に収まらない向き(3x3x3 に I など)は、w 方向に倒した向きで出す。
+function spawnPoint() {
+  const mid = Math.floor((S.N - 1) / 2);
+  return [mid, mid, mid, Math.floor((S.NW - 1) / 2)];
+}
 function spawn(idx) {
   const def = PIECES[idx];
-  const mid = Math.floor((S.N - 1) / 2);
-  const rel = def.cells.map(c => c.slice());
-  if (!kickIntoBounds(rel, [mid, mid, mid, S.slice])) { flash(t('spawnNoFit')); return false; }
-  // 中央・現在スライスに近い空き位置を探す(w のズレを最も重く見る)
-  const cost = q => Math.abs(q[3] - S.slice) * 100 + Math.abs(q[0] - mid) + Math.abs(q[1] - mid) + Math.abs(q[2] - mid);
-  let best = null;
-  for (let x = 0; x < S.N; x++) for (let y = 0; y < S.N; y++) for (let z = 0; z < S.N; z++) for (let w = 0; w < S.NW; w++) {
-    const q = [x, y, z, w];
-    if (best && cost(q) >= cost(best.pos)) continue;
-    const p = { def, rel, pos: q };
-    if (fits(p)) best = p;
+  const base = def.cells.map(c => c.slice());
+  const xw = rotationMatrix(0, 3, 1);
+  let k = null, rel = null;
+  for (const cand of [base, base.map(c => applyMatrix(xw, c))]) {
+    k = kickIntoBounds(cand, spawnPoint());
+    if (k) { rel = cand; break; }
   }
-  if (!best) { flash(t('spawnFull')); return false; }
-  S.piece = best;
+  if (!k) { flash(t('spawnNoFit')); return 'nofit'; }
+  const p = { def, rel, pos: k.pos };
+  if (!fits(p)) return 'blocked';
+  S.piece = p;
   S.pieceIdx = idx;
-  return true;
+  S.slice = k.pos[3];
+  return 'ok';
 }
 
 // =====================================================================
@@ -698,6 +740,12 @@ function updateUI() {
       : t('pieceInfo', { name: pieceName(p.def), pos: p.pos.join(','), n: inSlice, total: p.rel.length });
   } else $('hudPiece').textContent = t('noPiece');
 
+  $('hudClear').textContent = (S.practice ? `[${t('practiceTag')}] ` : '') + t('hudScore', { p: S.pieces, n: S.cleared });
+  $('practiceRow').hidden = !S.practice;
+  $('practice').checked = S.practice;
+  $('over').hidden = !S.gameOver;
+  if (S.gameOver) $('overStats').innerHTML = t('overStats', { p: S.pieces, n: S.cleared });
+
   const ph = $('hudPhase');
   if (S.phase === 'predicting') { ph.className = 'phase pred'; ph.textContent = t('phasePredicting', { rot: `${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°` }); }
   else if (S.phase === 'result') { ph.className = 'phase res'; ph.textContent = t('phaseResult'); }
@@ -707,7 +755,8 @@ function updateUI() {
   document.querySelectorAll('#rotButtons button').forEach(b => b.disabled = busy || !p);
   document.querySelectorAll('#moveButtons button').forEach(b => b.disabled = busy || !p);
   $('btnLock').disabled = busy || !p;
-  $('btnSpawn').disabled = busy;
+  $('btnSpawn').disabled = busy || S.gameOver;
+  $('pieceSel').disabled = busy || S.gameOver;
   $('predToggle').checked = S.predictMode;
 
   const pb = $('predbox');
@@ -823,35 +872,52 @@ function finishResult() {
   S.phase = 'idle'; S.pending = null; S.diff = null; S.pred.clear(); redraw();
 }
 
+// ある w の 3D 箱(N×N×N)が固定済みセルで全部埋まったら、その箱のセルを消す(重力なし)
+function clearFullBoxes() {
+  const need = S.N ** 3, count = new Array(S.NW).fill(0);
+  for (const k of S.placed.keys()) count[+k.split(',')[3]]++;
+  const full = [];
+  for (let w = 0; w < S.NW; w++) if (count[w] === need) full.push(w);
+  if (!full.length) return [];
+  for (const k of [...S.placed.keys()]) if (full.includes(+k.split(',')[3])) S.placed.delete(k);
+  S.cleared += full.length;
+  return full;
+}
+
 function lockPiece() {
   if (S.phase !== 'idle' || !S.piece) return;
   for (const c of absCells()) S.placed.set(key4(c), S.piece.def.color);
   S.piece = null;
+  S.pieces++;
+  const full = clearFullBoxes();
   nextPiece();
+  if (full.length) flash(full.map(w => t('boxCleared', { w })).join(' '));
 }
 
 function nextPiece() {
   const avail = PIECES.map((p, i) => i).filter(i => S.allow4D || !PIECES[i].is4D);
-  const cur = avail.indexOf(S.pieceIdx);
-  const idx = avail[(cur + 1) % avail.length];
-  if (!spawn(idx)) S.piece = null;
-  $('pieceSel').value = S.piece ? idx : $('pieceSel').value;
+  const idx = avail[Math.floor(Math.random() * avail.length)];
+  S.piece = null;
+  if (spawn(idx) === 'blocked') S.gameOver = true;
+  if (S.piece) $('pieceSel').value = idx;
   redraw();
 }
 
 function resetAll() {
-  const n = Math.max(3, Math.min(12, +$('sizeXYZ').value || 6));
+  const n = Math.max(3, Math.min(12, +$('sizeXYZ').value || 3));
   const nw = Math.max(2, Math.min(12, +$('sizeW').value || 6));
   $('sizeXYZ').value = n; $('sizeW').value = nw;
   S.N = n; S.NW = nw;
   S.slice = Math.floor((nw - 1) / 2);
   S.placed.clear();
+  S.cleared = 0;
+  S.pieces = 0;
+  S.gameOver = false;
   S.phase = 'idle'; S.pending = null; S.diff = null; S.pred.clear();
   buildFrame();
   buildEditor();
-  spawn(S.pieceIdx) || spawn(0);
   buildPieceSelect();
-  redraw();
+  nextPiece();
 }
 
 // --- 言語切替 ---
@@ -878,8 +944,16 @@ $('predToggle').onchange = e => { S.predictMode = e.target.checked; if (!S.predi
 $('showPrev').onchange = e => { S.showPrev = e.target.checked; redraw(); };
 $('showGhost').onchange = e => { S.showGhost = e.target.checked; redraw(); };
 $('allow4D').onchange = e => { S.allow4D = e.target.checked; buildPieceSelect(); };
-$('btnSpawn').onclick = () => { if (S.phase === 'idle' && spawn(+$('pieceSel').value)) redraw(); };
-$('pieceSel').onchange = () => { if (S.phase === 'idle' && spawn(+$('pieceSel').value)) redraw(); };
+function pickPiece() {
+  if (!S.practice || S.phase !== 'idle' || S.gameOver) return;
+  const r = spawn(+$('pieceSel').value);
+  if (r === 'blocked') flash(t('spawnBlocked'));
+  redraw();
+}
+$('btnSpawn').onclick = pickPiece;
+$('pieceSel').onchange = pickPiece;
+$('btnRetry').onclick = resetAll;
+$('practice').onchange = e => { S.practice = e.target.checked; resetAll(); };
 $('btnLock').onclick = lockPiece;
 $('btnReset').onclick = resetAll;
 
@@ -889,6 +963,7 @@ window.addEventListener('keydown', e => {
   const k = e.key;
   if (k === 'ArrowUp') { setSlice(S.slice + 1); e.preventDefault(); return; }
   if (k === 'ArrowDown') { setSlice(S.slice - 1); e.preventDefault(); return; }
+  if (S.gameOver) { if (k === 'Enter') { resetAll(); e.preventDefault(); } return; }
   if (k === 'Enter') { if (S.phase === 'predicting') executePrediction(); else if (S.phase === 'result') finishResult(); e.preventDefault(); return; }
   if (k === 'Escape') { if (S.phase === 'predicting') cancelPrediction(); else if (S.phase === 'result') finishResult(); return; }
   // e.code を優先(Shift+数字でも物理キーで判定できる)。空の環境では e.key から推定。
@@ -899,7 +974,6 @@ window.addEventListener('keydown', e => {
   if (moves[code]) { move(...moves[code]); return; }
   if (code === 'KeyP') { S.predictMode = !S.predictMode; if (!S.predictMode && S.phase === 'predicting') cancelPrediction(); else redraw(); return; }
   if (code === 'Space') { lockPiece(); e.preventDefault(); return; }
-  if (code === 'KeyN') { if (S.phase === 'idle') nextPiece(); return; }
 });
 
 function resize() {
@@ -924,7 +998,7 @@ resetAll();
 loop();
 
 // デバッグ/検証用に公開
-window.__4d = { S, PLANES, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
+window.__4d = { S, PLANES, clearFullBoxes, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
 </script>
 </body>
 </html>
