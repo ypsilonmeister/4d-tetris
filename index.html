@@ -67,6 +67,32 @@
   #radial .rc b { color: #fff; font-size: 13px; }
   #radial.pop .ring { animation: pop .12s ease-out; }
   @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  /* 消した箱のカウンター(右上) */
+  #score4d { position: absolute; right: 12px; top: 10px; pointer-events: none; text-align: right; line-height: 1.15;
+    background: rgba(20,22,30,.78); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px 7px; }
+  #score4d .lab { font-size: 10px; color: var(--muted); letter-spacing: .08em; }
+  #score4d .num { font-size: 30px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; transform-origin: right center; }
+  #score4d .sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #score4d.bump .num { animation: bump .6s ease-out; }
+  #score4d.bump { animation: glow .9s ease-out; }
+  @keyframes bump { 0% { transform: scale(1); } 25% { transform: scale(1.4); color: #fff; } 100% { transform: scale(1); } }
+  @keyframes glow { 0% { box-shadow: 0 0 0 0 rgba(250,204,21,.8); border-color: var(--accent); } 100% { box-shadow: 0 0 0 18px rgba(250,204,21,0); } }
+  /* 消去時のバナー */
+  #clearBanner { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; z-index: 4; }
+  #clearBanner[hidden] { display: none; }
+  #clearBanner .big { font-size: 46px; font-weight: 900; letter-spacing: .06em; color: var(--accent);
+    text-shadow: 0 0 18px rgba(250,204,21,.75), 0 3px 0 #7c5a00; }
+  #clearBanner .small { font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 4px #000; margin-top: 2px; }
+  #clearBanner.go { animation: banner 1.5s ease-out forwards; }
+  @keyframes banner {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    22% { transform: translate(-50%, -50%) scale(1); }
+    75% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+  #wstrip .wc.flash { animation: wflash 1.4s ease-out; }
+  @keyframes wflash { 0%, 30% { background: var(--accent); border-color: var(--accent); } 100% { background: var(--panel2); } }
   .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
 
   #panel { grid-column: 2; grid-row: 2; min-height: 0; background: var(--panel); border-left: 1px solid var(--line);
@@ -146,6 +172,9 @@
     #secPiece { order: 4; } #secGrid { order: 5; } #secLog { order: 6; } #secKeys { order: 7; }
     #hud { left: 10px; top: 8px; font-size: 12px; line-height: 1.4; }
     #hud .big { font-size: 18px; }
+    #score4d { right: 8px; top: 8px; padding: 4px 9px 5px; }
+    #score4d .num { font-size: 24px; }
+    #clearBanner .big { font-size: 36px; }
     #legend { right: 8px; bottom: 8px; font-size: 11px; padding: 5px 8px; line-height: 1.5; }
     label.chk { min-height: 32px; }
     input[type=checkbox] { width: 18px; height: 18px; }
@@ -176,6 +205,8 @@
       <div class="phase" id="hudPhase"></div>
       <div class="muted" id="hudClear"></div>
     </div>
+    <div id="score4d"><div class="lab" data-i18n="scoreBoxes"></div><div class="num" id="scoreNum">0</div><div class="sub" id="scoreSub"></div></div>
+    <div id="clearBanner" hidden></div>
     <div id="legend"></div>
     <div id="msg"></div>
     <div id="radial" hidden>
@@ -320,7 +351,12 @@ const I18N = {
     hudCleared: '消した箱: {n}',
     hudScore: 'ピース {p} / 消した箱 {n}',
     overTitle: 'GAME OVER',
-    overStats: '出現位置がふさがりました。<br>置いたピース <b>{p}</b> / 消した箱 <b>{n}</b>',
+    overStats: '出現位置がふさがりました。<br>消した箱 <b>{n}</b>(<b>{c}</b> セル)/ 置いたピース <b>{p}</b>',
+    scoreBoxes: '消した箱',
+    scoreSub: '{c} セル / ピース {p}',
+    clearBig: 'CLEAR!',
+    clearMulti: '{n}箱同時!',
+    clearSmall: '箱 w={ws} が埋まった({c} セル消去)',
     btnRetry: 'もう一度 (Enter)',
     spawnBlocked: '出現位置がふさがっています',
     cantMove: 'そちらには動けません',
@@ -379,7 +415,12 @@ const I18N = {
     hudCleared: 'Boxes cleared: {n}',
     hudScore: 'Pieces {p} / Boxes cleared {n}',
     overTitle: 'GAME OVER',
-    overStats: 'The spawn point is blocked.<br>Pieces placed <b>{p}</b> / Boxes cleared <b>{n}</b>',
+    overStats: 'The spawn point is blocked.<br>Boxes cleared <b>{n}</b> (<b>{c}</b> cells) / Pieces placed <b>{p}</b>',
+    scoreBoxes: 'BOXES',
+    scoreSub: '{c} cells / {p} pieces',
+    clearBig: 'CLEAR!',
+    clearMulti: '{n} boxes at once!',
+    clearSmall: 'Box w={ws} filled ({c} cells cleared)',
     btnRetry: 'Play again (Enter)',
     spawnBlocked: 'The spawn point is blocked',
     cantMove: "Can't move that way",
@@ -475,6 +516,7 @@ const S = {
   pieceIdx: 0,
   log: [],
   cleared: 0,
+  cellsCleared: 0,  // 消したセル数の累計
   pieces: 0,       // 固定したピース数
   gameOver: false,
 };
@@ -560,6 +602,9 @@ const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(5, 10, 7);
 const dl2 = new THREE.DirectionalLight(0xffffff, 0.35); dl2.position.set(-6, -3, -5); scene.add(dl2);
 
 const frameGroup = new THREE.Group(); scene.add(frameGroup);
+const FRAME_COL = new THREE.Color(0x4b5570), FLASH_COL = new THREE.Color(0xfacc15);
+const frameMat = new THREE.LineBasicMaterial({ color: FRAME_COL.clone() });
+const fxGroup = new THREE.Group(); scene.add(fxGroup);
 const voxGroup = new THREE.Group(); scene.add(voxGroup);
 const hoverBox = new THREE.LineSegments(
   new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02)),
@@ -616,8 +661,7 @@ function buildFrame() {
   frameGroup.clear();
   const N = S.N, h = N / 2 - 0.5;
   const box = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(N, N, N)),
-    new THREE.LineBasicMaterial({ color: 0x4b5570 }));
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(N, N, N)), frameMat);
   box.position.set(h, h, h); frameGroup.add(box);
 
   // 床と奥の壁のグリッド線
@@ -745,6 +789,8 @@ function updateWStrip() {
   for (let w = 0; w < S.NW; w++) {
     const d = document.createElement('div');
     d.className = 'wc' + (w === S.slice ? ' cur' : '');
+    const since = performance.now() - (wFlash.get(w) ?? -1e9);
+    if (since < 1400) { d.classList.add('flash'); d.style.animationDelay = (-since) + 'ms'; }
     const bars = [];
     for (let i = 0; i < Math.min(pc[w], 5); i++) bars.push(`<i style="background:#fb923c"></i>`);
     if (fc[w]) bars.push(`<i style="background:#667"></i>`);
@@ -824,11 +870,13 @@ function updateUI() {
       : t('pieceInfo', { name: pieceName(p.def), pos: p.pos.join(','), n: inSlice, total: p.rel.length });
   } else $('hudPiece').textContent = t('noPiece');
 
-  $('hudClear').textContent = (S.practice ? `[${t('practiceTag')}] ` : '') + t('hudScore', { p: S.pieces, n: S.cleared });
+  $('hudClear').textContent = S.practice ? `[${t('practiceTag')}]` : '';
+  $('scoreNum').textContent = S.cleared;
+  $('scoreSub').textContent = t('scoreSub', { c: S.cellsCleared, p: S.pieces });
   $('practiceRow').hidden = !S.practice;
   $('practice').checked = S.practice;
   $('over').hidden = !S.gameOver;
-  if (S.gameOver) $('overStats').innerHTML = t('overStats', { p: S.pieces, n: S.cleared });
+  if (S.gameOver) $('overStats').innerHTML = t('overStats', { p: S.pieces, n: S.cleared, c: S.cellsCleared });
 
   const ph = $('hudPhase');
   if (S.phase === 'predicting') { ph.className = 'phase pred'; ph.textContent = t('phasePredicting', { rot: `${S.pending.plane} ${S.pending.sign > 0 ? '+' : '−'}90°` }); }
@@ -969,9 +1017,14 @@ function clearFullBoxes() {
   const full = [];
   for (let w = 0; w < S.NW; w++) if (count[w] === need) full.push(w);
   if (!full.length) return [];
-  for (const k of [...S.placed.keys()]) if (full.includes(+k.split(',')[3])) S.placed.delete(k);
+  const cells = [];
+  for (const [k, col] of [...S.placed]) {
+    const c = k.split(',').map(Number);
+    if (full.includes(c[3])) { cells.push({ c, col }); S.placed.delete(k); }
+  }
   S.cleared += full.length;
-  return full;
+  S.cellsCleared += cells.length;
+  return { ws: full, cells };
 }
 
 function lockPiece() {
@@ -979,9 +1032,9 @@ function lockPiece() {
   for (const c of absCells()) S.placed.set(key4(c), S.piece.def.color);
   S.piece = null;
   S.pieces++;
-  const full = clearFullBoxes();
+  const res = clearFullBoxes();
   nextPiece();
-  if (full.length) flash(full.map(w => t('boxCleared', { w })).join(' '));
+  if (res.ws) playClearFx(res);
 }
 
 function nextPiece() {
@@ -1001,6 +1054,7 @@ function resetAll() {
   S.slice = Math.floor((nw - 1) / 2);
   S.placed.clear();
   S.cleared = 0;
+  S.cellsCleared = 0;
   S.pieces = 0;
   S.gameOver = false;
   S.phase = 'idle'; S.pending = null; S.diff = null; S.pred.clear();
@@ -1089,7 +1143,77 @@ function resize() {
 }
 new ResizeObserver(resize).observe(view);
 
-function loop() {
+// =====================================================================
+// 消去エフェクト
+//   消える箱は見ている断面とは別の w のことが多いので、どの断面にいても分かるよう
+//   「消えた箱のセルが白く光って外へ弾ける」演出を今の 3D ビューに重ねて出す。
+//   あわせて枠線の発光、中央バナー、w ストリップ点滅、カウンターの跳ね、振動。
+// =====================================================================
+
+const wFlash = new Map();         // w -> 点滅開始時刻
+const fxParts = [];               // { mesh, v, spin, born }
+let frameFlashAt = -1e9;
+const FX_MS = 1100;
+
+function playClearFx({ ws, cells }) {
+  const now = performance.now();
+  const h = S.N / 2 - 0.5;
+  const center = new THREE.Vector3(h, h, h);
+  for (const { c, col } of cells) {
+    const mat = new THREE.MeshStandardMaterial({ color: col, emissive: 0xffffff, emissiveIntensity: 1, transparent: true, opacity: 1, roughness: 0.5 });
+    const m = new THREE.Mesh(boxGeo, mat);
+    m.position.set(c[0], c[1], c[2]);
+    const dir = m.position.clone().sub(center);
+    if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
+    dir.normalize().add(new THREE.Vector3((Math.random() - .5) * .6, Math.random() * .5, (Math.random() - .5) * .6));
+    fxParts.push({ mesh: m, v: dir.multiplyScalar(2 + Math.random() * 2), spin: new THREE.Vector3(Math.random() * 6, Math.random() * 6, Math.random() * 6), born: now + Math.random() * 120 });
+    fxGroup.add(m);
+  }
+  frameFlashAt = now;
+  for (const w of ws) wFlash.set(w, now);
+
+  const b = $('clearBanner');
+  b.innerHTML = `<div class="big">${t('clearBig')}</div>` +
+    (ws.length > 1 ? `<div class="small">${t('clearMulti', { n: ws.length })}</div>` : '') +
+    `<div class="small">${t('clearSmall', { ws: ws.join(', '), c: cells.length })}</div>`;
+  b.hidden = false;
+  b.classList.remove('go'); void b.offsetWidth; b.classList.add('go');
+  clearTimeout(playClearFx.bannerTimer);
+  playClearFx.bannerTimer = setTimeout(() => { b.hidden = true; }, 1500);
+
+  const sc = $('score4d');
+  sc.classList.remove('bump'); void sc.offsetWidth; sc.classList.add('bump');
+
+  if (navigator.vibrate) { try { navigator.vibrate([20, 40, 60]); } catch (e) {} }
+  redraw();
+}
+
+function stepFx(now, dt) {
+  for (let i = fxParts.length - 1; i >= 0; i--) {
+    const p = fxParts[i];
+    const age = now - p.born;
+    if (age < 0) continue;
+    const k = age / FX_MS;
+    if (k >= 1) { fxGroup.remove(p.mesh); p.mesh.material.dispose(); fxParts.splice(i, 1); continue; }
+    // 最初の一瞬はその場で白く膨らみ、そのあと外へ飛んで薄れる
+    if (k > 0.12) {
+      p.mesh.position.addScaledVector(p.v, dt);
+      p.v.y -= 6 * dt;
+      p.mesh.rotation.x += p.spin.x * dt; p.mesh.rotation.y += p.spin.y * dt; p.mesh.rotation.z += p.spin.z * dt;
+    }
+    const sc = k < 0.12 ? 1 + k / 0.12 * 0.12 : 1.12 * (1 - (k - 0.12) * 0.8);
+    p.mesh.scale.setScalar(sc);
+    p.mesh.material.emissiveIntensity = Math.max(0, 1 - k * 2.5);
+    p.mesh.material.opacity = k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65;
+  }
+  const fk = (now - frameFlashAt) / 900;
+  frameMat.color.copy(fk >= 1 ? FRAME_COL : FLASH_COL.clone().lerp(FRAME_COL, Math.max(0, fk)));
+}
+
+let lastT = performance.now();
+function loop(now = performance.now()) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  stepFx(now, dt);
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
@@ -1231,7 +1355,7 @@ resetAll();
 loop();
 
 // デバッグ/検証用に公開
-window.__4d = { S, PLANES, THREE, camera, clearFullBoxes, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
+window.__4d = { S, PLANES, THREE, camera, playClearFx, lockPiece, clearFullBoxes, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
 </script>
 </body>
 </html>
