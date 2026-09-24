@@ -21,11 +21,21 @@
     --ng: #ef4444;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; font-size: 13px; }
-  #app { display: flex; height: 100%; }
-  #view { position: relative; flex: 1; min-width: 0; }
+  /* デスクトップ: 左に 3D ビュー、右にドック(常時表示)+ スクロールするパネル */
+  #app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr);
+    height: 100%; height: 100dvh; }
+  #view { position: relative; grid-column: 1; grid-row: 1 / 3; min-width: 0; min-height: 0; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   #view canvas { display: block; }
+  #dock { grid-column: 2; grid-row: 1; background: var(--panel); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .dockrow { display: grid; grid-template-columns: 44px 1fr 44px 1fr; gap: 6px; align-items: center; }
+  #dockW { text-align: center; font-weight: 700; font-family: ui-monospace, Consolas, monospace; font-size: 15px; }
+  #btnLock { font-weight: 700; }
+  /* 予測・答え合わせ中は移動ボタンを畳んで、予測グリッドに場所を譲る */
+  #dock.busy .move { display: none; }
   #hud { position: absolute; left: 12px; top: 10px; pointer-events: none; line-height: 1.5; }
   #hud .big { font-size: 22px; font-weight: 700; letter-spacing: .02em; }
   #hud .phase { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 4px; background: var(--panel2); color: var(--muted); }
@@ -41,11 +51,28 @@
   #over .box { background: var(--panel); border: 1px solid var(--ng); border-radius: 10px; padding: 22px 28px; text-align: center; line-height: 1.8; }
   #over .ttl { font-size: 26px; font-weight: 800; color: #f87171; letter-spacing: .04em; }
   #over button { margin-top: 12px; padding: 8px 20px; }
+  /* 長押しで出る放射状の回転メニュー */
+  #radial { position: absolute; inset: 0; z-index: 5; background: rgba(8,9,14,.35); touch-action: none; }
+  #radial[hidden] { display: none; }
+  #radial .ring { position: absolute; width: 0; height: 0; }
+  #radial .ring::before { content: ""; position: absolute; width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+    left: calc(var(--r) * -1); top: calc(var(--r) * -1); border-radius: 50%; border: 1px dashed rgba(255,255,255,.18); }
+  #radial .ri { position: absolute; transform: translate(-50%, -50%) scale(var(--k, 1)); width: 58px; height: 40px; padding: 0;
+    border-radius: 20px; font-family: ui-monospace, Consolas, monospace; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.45); transition: transform .08s, outline-color .08s; outline: 2px solid transparent; }
+  #radial .ri.hot { outline-color: #fff; transform: translate(-50%, -50%) scale(calc(var(--k, 1) * 1.15)); }
+  #radial .rc { position: absolute; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(20,22,30,.92); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 11px; line-height: 1.2; color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+  #radial .rc b { color: #fff; font-size: 13px; }
+  #radial.pop .ring { animation: pop .12s ease-out; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
 
-  #panel { width: 360px; flex: none; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px 14px 24px; }
-  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
-  h2:first-child { margin-top: 0; }
+  #panel { grid-column: 2; grid-row: 2; min-height: 0; background: var(--panel); border-left: 1px solid var(--line);
+    overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 18px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .hint { color: var(--muted); font-size: 11px; margin: -2px 0 8px; }
   button { font: inherit; color: var(--text); background: var(--plain); border: 1px solid transparent; border-radius: 5px;
     padding: 6px 8px; cursor: pointer; }
   button:hover:not(:disabled) { background: var(--plain-h); }
@@ -71,7 +98,6 @@
   .muted { color: var(--muted); }
   .mono { font-family: ui-monospace, Consolas, monospace; }
 
-  #langBar { margin-bottom: 14px; }
   #langBar button { padding: 3px 10px; }
   #langBar button.active { background: var(--accent); color: #1a1a1a; font-weight: 700; }
 
@@ -102,11 +128,37 @@
   kbd { font-family: ui-monospace, Consolas, monospace; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
   .keys { line-height: 1.9; color: var(--muted); }
 
+  /* スマホ・狭い画面: ビュー / ドック / スクロールするパネル の縦3段。ページ自体はスクロールしない */
   @media (max-width: 800px) {
-    #app { flex-direction: column; }
-    #view { height: 55vh; flex: none; }
-    #panel { width: 100%; border-left: 0; border-top: 1px solid var(--line); }
+    html, body { font-size: 14px; }
+    #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 46dvh auto minmax(0, 1fr); }
+    #view { grid-column: 1; grid-row: 1; }
+    #dock { grid-column: 1; grid-row: 2; border-left: 0; border-top: 1px solid var(--line); padding: 8px 10px; }
+    #panel { grid-column: 1; grid-row: 3; border-left: 0; padding: 12px 12px 28px; }
+    #panel button, #dock button, select { min-height: 44px; }
+    #langBar button { min-height: 36px; }
+    .move button { font-size: 15px; }
+    /* 回転ボタンは 4 列に詰める(ラベル列と区切りは省略) */
+    .rot { grid-template-columns: repeat(4, 1fr); }
+    .rot .lab, .rot .sep { display: none; }
+    /* 予測中に編集グリッドがすぐ見えるよう、予測セクションを上に */
+    #secLang { order: 0; } #secPredict { order: 1; } #secRotate { order: 2; } #secSlice { order: 3; }
+    #secPiece { order: 4; } #secGrid { order: 5; } #secLog { order: 6; } #secKeys { order: 7; }
+    #hud { left: 10px; top: 8px; font-size: 12px; line-height: 1.4; }
+    #hud .big { font-size: 18px; }
+    #legend { right: 8px; bottom: 8px; font-size: 11px; padding: 5px 8px; line-height: 1.5; }
+    label.chk { min-height: 32px; }
+    input[type=checkbox] { width: 18px; height: 18px; }
   }
+  @media (max-width: 800px) and (max-height: 560px) {
+    /* 横向きスマホ: ビューを左、操作を右に */
+    #app { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    #view { grid-column: 1; grid-row: 1 / 3; }
+    #dock { grid-column: 2; grid-row: 1; }
+    #panel { grid-column: 2; grid-row: 2; }
+  }
+  /* タッチ端末ではキーボード操作の説明は不要 */
+  @media (hover: none) and (pointer: coarse) { #secKeys { display: none; } }
 </style>
 <script type="importmap">
 { "imports": {
@@ -126,6 +178,9 @@
     </div>
     <div id="legend"></div>
     <div id="msg"></div>
+    <div id="radial" hidden>
+      <div class="ring" id="radialRing"></div>
+    </div>
     <div id="over" hidden>
       <div class="box">
         <div class="ttl" data-i18n="overTitle"></div>
@@ -135,56 +190,79 @@
     </div>
   </div>
 
+  <div id="dock">
+    <div class="dockrow">
+      <button id="sliceDown" class="w" aria-label="w -1">◀</button>
+      <div id="dockW"></div>
+      <button id="sliceUp" class="w" aria-label="w +1">▶</button>
+      <button id="btnLock" class="primary" data-i18n="btnLock"></button>
+    </div>
+    <div class="move" id="moveDock"></div>
+  </div>
+
   <div id="panel">
-    <div class="row" id="langBar">
-      <span class="muted">Language</span>
-      <button id="langJa" data-lang="ja">日本語</button>
-      <button id="langEn" data-lang="en">English</button>
-    </div>
+    <section id="secLang">
+      <div class="row" id="langBar">
+        <span class="muted">Language</span>
+        <button id="langJa" data-lang="ja">日本語</button>
+        <button id="langEn" data-lang="en">English</button>
+      </div>
+    </section>
 
-    <h2 data-i18n="hRotate"></h2>
-    <div class="rot" id="rotButtons"></div>
+    <section id="secRotate">
+      <h2 data-i18n="hRotate"></h2>
+      <div class="hint" data-i18n="rotHint"></div>
+      <div class="rot" id="rotButtons"></div>
+    </section>
 
-    <h2 data-i18n="hSlice"></h2>
-    <div class="row"><input type="range" id="slice" min="0" max="5" step="1" value="0"></div>
-    <div id="wstrip"></div>
-    <div class="row muted" style="margin-top:4px;font-size:11px"><span data-i18n="barLabel"></span> <span class="sw" style="background:#fb923c;width:8px;height:8px"></span><span data-i18n="barPiece"></span> / <span class="sw" style="background:#667;width:8px;height:8px"></span><span data-i18n="barPlaced"></span></div>
+    <section id="secSlice">
+      <h2 data-i18n="hSlice"></h2>
+      <div class="row"><input type="range" id="slice" min="0" max="5" step="1" value="0"></div>
+      <div id="wstrip"></div>
+      <div class="row muted" style="margin-top:4px;font-size:11px"><span data-i18n="barLabel"></span> <span class="sw" style="background:#fb923c;width:8px;height:8px"></span><span data-i18n="barPiece"></span> / <span class="sw" style="background:#667;width:8px;height:8px"></span><span data-i18n="barPlaced"></span></div>
+    </section>
 
-    <h2 data-i18n="hPredict"></h2>
-    <label class="chk"><input type="checkbox" id="predToggle"> <span data-i18n="predToggle"></span></label>
-    <label class="chk"><input type="checkbox" id="showPrev" checked> <span data-i18n="showPrev"></span></label>
-    <div id="predbox" style="display:none; margin-top:8px">
-      <div id="predTitle"></div>
-      <div id="editor"></div>
-      <div id="score"></div>
-      <div class="row" style="margin-top:8px" id="predActions"></div>
-    </div>
+    <section id="secPredict">
+      <h2 data-i18n="hPredict"></h2>
+      <label class="chk"><input type="checkbox" id="predToggle"> <span data-i18n="predToggle"></span></label>
+      <label class="chk"><input type="checkbox" id="showPrev" checked> <span data-i18n="showPrev"></span></label>
+      <div id="predbox" style="display:none; margin-top:8px">
+        <div id="predTitle"></div>
+        <div id="editor"></div>
+        <div id="score"></div>
+        <div class="row" style="margin-top:8px" id="predActions"></div>
+      </div>
+    </section>
 
-    <h2 data-i18n="hMove"></h2>
-    <div class="move" id="moveButtons"></div>
+    <section id="secPiece">
+      <h2 data-i18n="hPiece"></h2>
+      <label class="chk"><input type="checkbox" id="practice"> <span data-i18n="practice"></span></label>
+      <div class="row" id="practiceRow" style="margin-top:6px" hidden>
+        <select id="pieceSel"></select>
+        <button id="btnSpawn" data-i18n="btnSpawn"></button>
+      </div>
+      <label class="chk" style="margin-top:6px"><input type="checkbox" id="allow4D"> <span data-i18n="allow4D"></span></label>
+      <label class="chk"><input type="checkbox" id="showGhost"> <span data-i18n="showGhost"></span></label>
+    </section>
 
-    <h2 data-i18n="hPiece"></h2>
-    <label class="chk"><input type="checkbox" id="practice"> <span data-i18n="practice"></span></label>
-    <div class="row" id="practiceRow" style="margin-top:6px" hidden>
-      <select id="pieceSel"></select>
-      <button id="btnSpawn" data-i18n="btnSpawn"></button>
-      <button id="btnLock" data-i18n="btnLock"></button>
-    </div>
-    <label class="chk" style="margin-top:6px"><input type="checkbox" id="allow4D"> <span data-i18n="allow4D"></span></label>
-    <label class="chk"><input type="checkbox" id="showGhost"> <span data-i18n="showGhost"></span></label>
+    <section id="secGrid">
+      <h2 data-i18n="hGrid"></h2>
+      <div class="row">
+        x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="3">
+        w <input type="number" id="sizeW" min="2" max="12" value="6">
+        <button id="btnReset" class="ghost" data-i18n="btnReset"></button>
+      </div>
+    </section>
 
-    <h2 data-i18n="hGrid"></h2>
-    <div class="row">
-      x,y,z <input type="number" id="sizeXYZ" min="3" max="12" value="3">
-      w <input type="number" id="sizeW" min="2" max="12" value="6">
-      <button id="btnReset" class="ghost" data-i18n="btnReset"></button>
-    </div>
+    <section id="secLog">
+      <h2 data-i18n="hLog"></h2>
+      <div id="log"></div>
+    </section>
 
-    <h2 data-i18n="hLog"></h2>
-    <div id="log"></div>
-
-    <h2 data-i18n="hKeys"></h2>
-    <div class="keys" data-i18n-html="keysHtml"></div>
+    <section id="secKeys">
+      <h2 data-i18n="hKeys"></h2>
+      <div class="keys" data-i18n-html="keysHtml"></div>
+    </section>
   </div>
 </div>
 
@@ -209,7 +287,7 @@ const I18N = {
     allow4D: '真の4Dピース(w方向に厚み)も選択肢に含める',
     showGhost: '隣接スライス (w±1) のピースを薄く表示',
     keysHtml:
-      '<kbd>↑</kbd><kbd>↓</kbd> スライス w ±1<br>' +
+      '<kbd>↑</kbd><kbd>↓</kbd> スライス w ±1  ピースを長押し: 回転メニュー<br>' +
       '<kbd>1</kbd>–<kbd>6</kbd> 回転 xy xz yz <b style="color:#fb923c">xw yw zw</b>(<kbd>Shift</kbd>で逆回転)<br>' +
       '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
       '<kbd>P</kbd> 予測モード切替  <kbd>Enter</kbd> 実行/次へ  <kbd>Esc</kbd> キャンセル<br>' +
@@ -250,6 +328,9 @@ const I18N = {
     errBounds: 'グリッドに収まりません', errCollide: '固定済みセルと衝突します',
     spawnNoFit: 'このピースはグリッドに収まりません',
     spawnFull: '空き位置がありません(リセットしてください)',
+    rotHint: 'ピースを長押しすると回転メニューが出ます(指を滑らせて離すと実行)',
+    radialDrag: '滑らせて<br>離す',
+    dockW: '断面 w = {w} / {max}',
     rotTitle: '{plane} 平面で {sign}90° 回転({a}→{b})  キー: {key}',
     wcTitle: 'w={w}: ピース {p} セル / 固定 {f} セル',
   },
@@ -265,7 +346,7 @@ const I18N = {
     allow4D: 'Include true 4D pieces (thick in w)',
     showGhost: 'Faintly show the piece in adjacent slices (w±1)',
     keysHtml:
-      '<kbd>↑</kbd><kbd>↓</kbd> slice w ±1<br>' +
+      '<kbd>↑</kbd><kbd>↓</kbd> slice w ±1  long-press piece: rotation menu<br>' +
       '<kbd>1</kbd>–<kbd>6</kbd> rotate xy xz yz <b style="color:#fb923c">xw yw zw</b> (<kbd>Shift</kbd> reverses)<br>' +
       '<kbd>A</kbd><kbd>D</kbd> x±  <kbd>R</kbd><kbd>F</kbd> y±  <kbd>W</kbd><kbd>S</kbd> z±  <kbd>T</kbd><kbd>G</kbd> w±<br>' +
       '<kbd>P</kbd> toggle prediction  <kbd>Enter</kbd> run / next  <kbd>Esc</kbd> cancel<br>' +
@@ -306,6 +387,9 @@ const I18N = {
     errBounds: "Doesn't fit in the grid", errCollide: 'Collides with locked cells',
     spawnNoFit: "This piece doesn't fit in the grid",
     spawnFull: 'No free position (please reset)',
+    rotHint: 'Long-press the piece for the rotation menu (slide and release to rotate)',
+    radialDrag: 'slide &amp;<br>release',
+    dockW: 'slice w = {w} / {max}',
     rotTitle: 'Rotate {sign}90° in the {plane} plane ({a}→{b})  Key: {key}',
     wcTitle: 'w={w}: piece {p} cells / locked {f} cells',
   },
@@ -503,10 +587,10 @@ const dashMat = new THREE.LineDashedMaterial({ color: 0xaab3d0, dashSize: 0.08, 
 // 3D の配置: 4D (x,y,z) をそのまま Three の (x,y,z) に。y が上。
 const toV = (x, y, z) => new THREE.Vector3(x, y, z);
 
-function addVoxel(x, y, z, color, { opacity = 1, edge = 0x000000, edgeOpacity = 0.6, solid = true, small = false } = {}) {
+function addVoxel(x, y, z, color, { opacity = 1, edge = 0x000000, edgeOpacity = 0.6, solid = true, small = false, pick = false } = {}) {
   if (solid) {
     const m = new THREE.Mesh(small ? smallGeo : boxGeo, solidMat(color, opacity));
-    m.position.copy(toV(x, y, z)); voxGroup.add(m);
+    m.position.copy(toV(x, y, z)); m.userData.pick = pick; voxGroup.add(m);
   }
   if (edge !== null) {
     const l = new THREE.LineSegments(small ? smallEdge : edgeGeo, lineMat(edge, edgeOpacity));
@@ -559,8 +643,8 @@ function buildFrame() {
   }
 
   controls.target.set(h, h, h);
-  camera.position.set(h + N * 1.35, h + N * 1.05, h + N * 1.75);
-  controls.update();
+  camera.position.set(h + 1.35, h + 1.05, h + 1.75);
+  fitCamera();
 }
 
 // =====================================================================
@@ -585,7 +669,7 @@ function renderVoxels() {
     if (S.piece) {
       const col = S.piece.def.color;
       for (const c of absCells()) {
-        if (c[3] === w) addVoxel(c[0], c[1], c[2], col, { edge: 0xffffff, edgeOpacity: 0.55 });
+        if (c[3] === w) addVoxel(c[0], c[1], c[2], col, { edge: 0xffffff, edgeOpacity: 0.55, pick: true });
         else if (S.showGhost && Math.abs(c[3] - w) === 1) {
           // w-1 は青寄り、w+1 は赤寄りの小さなワイヤー
           addVoxel(c[0], c[1], c[2], c[3] < w ? 0x60a5fa : 0xf87171,
@@ -634,7 +718,7 @@ function buildRotButtons() {
 }
 
 function buildMoveButtons() {
-  const box = $('moveButtons'); box.innerHTML = '';
+  const box = $('moveDock'); box.innerHTML = '';
   for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
     const b = document.createElement('button');
     b.textContent = AXES[i] + (s > 0 ? '+' : '−');
@@ -753,7 +837,12 @@ function updateUI() {
 
   const busy = S.phase !== 'idle';
   document.querySelectorAll('#rotButtons button').forEach(b => b.disabled = busy || !p);
-  document.querySelectorAll('#moveButtons button').forEach(b => b.disabled = busy || !p);
+  document.querySelectorAll('#moveDock button').forEach(b => b.disabled = busy || !p);
+  $('sliceDown').disabled = S.phase === 'predicting' || S.slice <= 0;
+  $('sliceUp').disabled = S.phase === 'predicting' || S.slice >= S.NW - 1;
+  $('dockW').textContent = t('dockW', { w: S.slice, max: S.NW - 1 });
+  if (busy || S.gameOver) closeRadial();
+  $('dock').classList.toggle('busy', busy);
   $('btnLock').disabled = busy || !p;
   $('btnSpawn').disabled = busy || S.gameOver;
   $('pieceSel').disabled = busy || S.gameOver;
@@ -838,6 +927,7 @@ function requestRotate(plane, sign) {
   S.pred = new Set();
   S.prevSlice = sliceOfPiece(S.piece, S.slice);
   redraw();
+  if (window.matchMedia('(max-width: 800px)').matches) $('predbox').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function togglePred(k) {
@@ -953,6 +1043,8 @@ function pickPiece() {
 $('btnSpawn').onclick = pickPiece;
 $('pieceSel').onchange = pickPiece;
 $('btnRetry').onclick = resetAll;
+$('sliceDown').onclick = () => setSlice(S.slice - 1);
+$('sliceUp').onclick = () => setSlice(S.slice + 1);
 $('practice').onchange = e => { S.practice = e.target.checked; resetAll(); };
 $('btnLock').onclick = lockPiece;
 $('btnReset').onclick = resetAll;
@@ -965,6 +1057,7 @@ window.addEventListener('keydown', e => {
   if (k === 'ArrowDown') { setSlice(S.slice - 1); e.preventDefault(); return; }
   if (S.gameOver) { if (k === 'Enter') { resetAll(); e.preventDefault(); } return; }
   if (k === 'Enter') { if (S.phase === 'predicting') executePrediction(); else if (S.phase === 'result') finishResult(); e.preventDefault(); return; }
+  if (k === 'Escape' && rad) { closeRadial(); return; }
   if (k === 'Escape') { if (S.phase === 'predicting') cancelPrediction(); else if (S.phase === 'result') finishResult(); return; }
   // e.code を優先(Shift+数字でも物理キーで判定できる)。空の環境では e.key から推定。
   const code = e.code || (/^[a-z]$/i.test(k) ? 'Key' + k.toUpperCase() : /^\d$/.test(k) ? 'Digit' + k : k === ' ' ? 'Space' : '');
@@ -976,18 +1069,158 @@ window.addEventListener('keydown', e => {
   if (code === 'Space') { lockPiece(); e.preventDefault(); return; }
 });
 
+// 箱+軸を包む球が画面に収まる距離へカメラを寄せる(縦長画面でも切れないよう、狭い方の画角で計算)
+function fitCamera() {
+  const r = Math.sqrt(3) * S.N / 2 + 0.9;
+  const vf = THREE.MathUtils.degToRad(camera.fov);
+  const hf = 2 * Math.atan(Math.tan(vf / 2) * camera.aspect);
+  const dist = r / Math.sin(Math.min(vf, hf) / 2) * 0.92;
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  camera.position.copy(controls.target).addScaledVector(dir, dist);
+  controls.update();
+}
+
 function resize() {
   const w = view.clientWidth, h = view.clientHeight;
+  if (!w || !h) return;
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
+  fitCamera();
 }
-window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe(view);
 
 function loop() {
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
+
+// =====================================================================
+// 長押しで出る放射状の回転メニュー
+//   ピースを長押し → メニュー表示。指を滑らせて離すとその回転を実行。
+//   何も選ばずに離した場合はメニューが残るので、タップでも選べる。
+//   上半分(指で隠れにくい側)に本体の w 回転、下半分に 3D 回転を置く。
+// =====================================================================
+
+const RADIAL_ITEMS = (() => {
+  const items = [];
+  ['xw', 'yw', 'zw'].forEach((pl, i) => [1, -1].forEach((sg, j) => items.push({ plane: pl, sign: sg, ang: -165 + 30 * (i * 2 + j) })));
+  ['xy', 'xz', 'yz'].forEach((pl, i) => [1, -1].forEach((sg, j) => items.push({ plane: pl, sign: sg, ang: 165 - 30 * (i * 2 + j) })));
+  return items;
+})();
+const LP_MS = 380, LP_MOVE = 10, RADIAL_R = 118, RADIAL_DEAD = 38;
+const radial = $('radial'), ring = $('radialRing');
+let lp = null;          // 長押し判定中 { id, x, y, timer }
+let rad = null;         // 表示中 { cx, cy, r, dragId, hot }
+let suppressClickUntil = 0;
+
+const canRotateNow = () => S.phase === 'idle' && S.piece && !S.gameOver;
+const rotLabel = it => `${it.plane}${it.sign > 0 ? '+' : '−'}`;
+
+const raycaster = new THREE.Raycaster();
+function hitsPiece(clientX, clientY) {
+  const targets = voxGroup.children.filter(o => o.userData.pick);
+  if (!targets.length) return true;   // この断面にピースが見えていないときは、どこを長押ししても開く
+  const r = renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  return raycaster.intersectObjects(targets, false).length > 0;
+}
+
+function cancelLongPress() { if (lp) { clearTimeout(lp.timer); lp = null; } }
+
+function openRadial(clientX, clientY, dragId) {
+  const vr = view.getBoundingClientRect();
+  const r = Math.min(RADIAL_R, (Math.min(vr.width, vr.height) - 56) / 2);
+  const k = Math.min(1, r / RADIAL_R);
+  const m = r + 32 * k;
+  const cx = Math.max(m, Math.min(vr.width - m, clientX - vr.left));
+  const cy = Math.max(m, Math.min(vr.height - m, clientY - vr.top));
+  ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+  ring.style.setProperty('--r', r + 'px');
+  ring.style.setProperty('--k', k);
+  ring.innerHTML = '';
+  for (const it of RADIAL_ITEMS) {
+    const b = document.createElement('button');
+    b.className = 'ri' + (it.plane.includes('w') ? ' w' : '');
+    b.textContent = rotLabel(it);
+    const a = it.ang * Math.PI / 180;
+    b.style.left = (Math.cos(a) * r) + 'px';
+    b.style.top = (Math.sin(a) * r) + 'px';
+    b.onclick = e => { e.stopPropagation(); if (performance.now() < suppressClickUntil) return; chooseRadial(it); };
+    it.el = b;
+    ring.appendChild(b);
+  }
+  const c = document.createElement('div');
+  c.className = 'rc'; c.id = 'radialCenter';
+  ring.appendChild(c);
+  rad = { cx, cy, r, dragId, hot: null };
+  setHot(null);
+  radial.hidden = false;
+  radial.classList.remove('pop'); void radial.offsetWidth; radial.classList.add('pop');
+  controls.enabled = false;
+  if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+}
+
+function closeRadial() {
+  if (!rad) return;
+  radial.hidden = true;
+  rad = null;
+  controls.enabled = true;
+}
+
+function pickRadial(clientX, clientY) {
+  const vr = view.getBoundingClientRect();
+  const dx = clientX - vr.left - rad.cx, dy = clientY - vr.top - rad.cy;
+  if (Math.hypot(dx, dy) < RADIAL_DEAD) return null;
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  let best = null, bd = 999;
+  for (const it of RADIAL_ITEMS) {
+    const d = Math.abs(((ang - it.ang + 540) % 360) - 180);
+    if (d < bd) { bd = d; best = it; }
+  }
+  return best;
+}
+
+function setHot(it) {
+  if (!rad) return;
+  rad.hot = it;
+  for (const x of RADIAL_ITEMS) x.el && x.el.classList.toggle('hot', x === it);
+  const c = $('radialCenter');
+  if (it) c.innerHTML = `<b>${it.plane} ${it.sign > 0 ? '+' : '−'}90°</b>`;
+  else c.innerHTML = rad.dragId !== null ? t('radialDrag') : '×';
+}
+
+function chooseRadial(it) {
+  closeRadial();
+  requestRotate(it.plane, it.sign);
+}
+
+const canvasEl = renderer.domElement;
+canvasEl.addEventListener('contextmenu', e => e.preventDefault());
+canvasEl.addEventListener('pointerdown', e => {
+  if (rad) return;
+  if (lp) { cancelLongPress(); return; }         // 2本目の指(ピンチ)なら長押し判定をやめる
+  if (e.button !== 0 || !canRotateNow() || !hitsPiece(e.clientX, e.clientY)) return;
+  const id = e.pointerId, x = e.clientX, y = e.clientY;
+  lp = { id, x, y, timer: setTimeout(() => { lp = null; openRadial(x, y, id); }, LP_MS) };
+});
+window.addEventListener('pointermove', e => {
+  if (lp && e.pointerId === lp.id && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > LP_MOVE) cancelLongPress();
+  if (rad && e.pointerId === rad.dragId) setHot(pickRadial(e.clientX, e.clientY));
+});
+function endPointer(e) {
+  if (lp && e.pointerId === lp.id) cancelLongPress();
+  if (rad && e.pointerId === rad.dragId) {
+    const it = e.type === 'pointerup' ? pickRadial(e.clientX, e.clientY) : null;
+    rad.dragId = null;                            // 以降はタップで選ぶモード
+    suppressClickUntil = performance.now() + 350;
+    if (it) chooseRadial(it); else setHot(null);
+  }
+}
+window.addEventListener('pointerup', endPointer);
+window.addEventListener('pointercancel', endPointer);
+radial.addEventListener('click', () => { if (performance.now() >= suppressClickUntil) closeRadial(); });
 
 // --- 起動 ---
 buildRotButtons();
@@ -998,7 +1231,7 @@ resetAll();
 loop();
 
 // デバッグ/検証用に公開
-window.__4d = { S, PLANES, clearFullBoxes, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
+window.__4d = { S, PLANES, THREE, camera, clearFullBoxes, setLang, t, rotationMatrix, applyMatrix, computeRotation, sliceOfPiece, absCells };
 </script>
 </body>
 </html>
